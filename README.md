@@ -1,6 +1,6 @@
 # Codezerg.Data.Repository
 
-A flexible .NET 8 repository pattern library built on top of [linq2db](https://github.com/linq2db/linq2db) that provides three implementation strategies with a unified `IRepository<T>` interface. Designed for simplicity, performance, and thread safety.
+A simplified .NET repository pattern library built on top of [linq2db](https://github.com/linq2db/linq2db) that provides three implementation strategies with a unified `IRepository<T>` interface. Designed for simplicity, performance, and thread safety.
 
 ## Features
 
@@ -11,26 +11,17 @@ A flexible .NET 8 repository pattern library built on top of [linq2db](https://g
 
 - 🔒 **Thread Safety**
   - InMemoryRepository uses `ReaderWriterLockSlim` for concurrent access
+  - DatabaseRepository thread-safe through connection-per-operation pattern
   - CachedRepository fully thread-safe with read/write locks
-  - Safe for use in multi-threaded applications and ASP.NET Core
 
 - 🎯 **Automatic Property Mapping**
-  - **No attributes required!** All public properties with get/set are automatically mapped
-  - Supports standard .NET DataAnnotations attributes
-  - Automatically translates `[Key]`, `[Required]`, `[MaxLength]`, etc. to linq2db equivalents
-  - Falls back to linq2db attributes for advanced scenarios
-
-- ⚙️ **Attribute-Based Configuration**
-  - Configure repositories using attributes on entity classes
-  - Support for runtime configuration overrides
-  - Fluent configuration API
+  - All public properties with get/set are automatically mapped as database columns
+  - Supports both linq2db and .NET DataAnnotations attributes
+  - Smart identity management with auto-incrementing primary keys
 
 - 🗄️ **Database Support via linq2db**
   - SQLite (default)
-  - SQL Server (via linq2db.SqlServer)
-  - PostgreSQL (via linq2db.PostgreSQL)
-  - MySQL (via linq2db.MySql)
-  - 30+ other providers supported by linq2db
+  - SQL Server, PostgreSQL, MySQL, and 30+ other providers via linq2db
 
 ## Installation
 
@@ -51,13 +42,12 @@ public class Product
     [PrimaryKey, Identity]
     public int Id { get; set; }
     
-    // No [Column] attribute needed - automatically mapped!
+    // All properties are automatically mapped - no [Column] needed!
     public string Name { get; set; }
     public string Description { get; set; }
     public decimal Price { get; set; }
     public int StockQuantity { get; set; }
     public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
 }
 ```
 
@@ -78,212 +68,276 @@ public class Product
     [MaxLength(100)]
     public string Name { get; set; }
     
-    [MaxLength(500)]
-    public string Description { get; set; }
-    
-    [Column(TypeName = "decimal(10,2)")]
     public decimal Price { get; set; }
-    
-    public int StockQuantity { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
 }
 ```
 
-### 2. Configure Services
+### 2. Create Repository
 
 ```csharp
-// Program.cs or Startup.cs
-builder.Services.AddRepositoryServicesWithAttributes(options =>
-{
-    options.ProviderName = LinqToDB.ProviderName.SQLite;
-    options.DataPath = "Data";
-    options.UseCachedRepository = true; // Default strategy
-});
+// In-memory repository (great for testing)
+var inMemoryRepo = new InMemoryRepository<Product>();
+
+// Direct database repository
+var dbRepo = new DatabaseRepository<Product>(
+    LinqToDB.ProviderName.SQLite,
+    "Data Source=products.db"
+);
+
+// Cached repository (best of both worlds)
+var cachedRepo = new CachedRepository<Product>(
+    LinqToDB.ProviderName.SQLite,
+    "Data Source=products.db"
+);
 ```
 
 ### 3. Use the Repository
 
 ```csharp
-public class ProductService
-{
-    private readonly IRepository<Product> _repository;
-    
-    public ProductService(IRepository<Product> repository)
-    {
-        _repository = repository;
-    }
-    
-    public async Task<Product> CreateProduct(string name, decimal price)
-    {
-        var product = new Product 
-        { 
-            Name = name, 
-            Price = price,
-            CreatedAt = DateTime.UtcNow
-        };
-        
-        var id = _repository.InsertWithIdentity(product);
-        return product;
-    }
-    
-    public IEnumerable<Product> GetProducts(decimal minPrice)
-    {
-        return _repository.Find(p => p.Price >= minPrice);
-    }
-}
+// Insert with auto-generated ID
+var product = new Product 
+{ 
+    Name = "Widget",
+    Price = 29.99m,
+    CreatedAt = DateTime.UtcNow
+};
+
+int id = repository.InsertWithIdentity(product);
+Console.WriteLine($"Created product with ID: {product.Id}");
+
+// Query data
+var expensiveProducts = repository.Find(p => p.Price > 50);
+var productCount = repository.Count(p => p.StockQuantity > 0);
+
+// Update
+product.Price = 34.99m;
+repository.Update(product);
+
+// Delete
+repository.Delete(product);
+// or delete by condition
+repository.DeleteMany(p => p.StockQuantity == 0);
 ```
 
 ## Repository Strategies
 
 ### InMemoryRepository
-Perfect for testing and temporary data storage:
+
+Perfect for testing and temporary data storage. Features deep copy protection to prevent external modifications.
 
 ```csharp
-[InMemoryRepository(PersistAcrossSessions = true)]
-public class SessionData
-{
-    [PrimaryKey]
-    public Guid Id { get; set; }
-    public string Data { get; set; }
-}
+var repository = new InMemoryRepository<Product>();
+
+// All data is stored in memory
+// Thread-safe with ReaderWriterLockSlim
+// Automatic identity generation
+// Deep copy protection ensures data integrity
 ```
 
-### DatabaseRepository
-Direct database access without caching:
+### DatabaseRepository  
+
+Direct database access without caching. Best for large datasets or when data freshness is critical.
 
 ```csharp
-[DatabaseRepository(
-    DatabaseName = "MyApp",
-    EnableWalMode = true,
-    AutoCreateTable = true
-)]
-public class AuditLog
-{
-    [PrimaryKey, Identity]
-    public int Id { get; set; }
-    public string Action { get; set; }
-    public DateTime Timestamp { get; set; }
-}
+var repository = new DatabaseRepository<Product>(
+    LinqToDB.ProviderName.SQLite,
+    "Data Source=myapp.db"
+);
+
+// Direct database operations
+// Automatic table creation
+// WAL mode enabled for SQLite
+// Thread-safe through connection-per-operation
 ```
 
 ### CachedRepository
-Best of both worlds - in-memory performance with database persistence:
+
+Combines in-memory performance with database persistence. Ideal for read-heavy workloads.
 
 ```csharp
-[CachedRepository(
-    PreloadCache = true,
-    DatabaseName = "MyApp"
-)]
-public class Configuration
+var repository = new CachedRepository<Product>(
+    LinqToDB.ProviderName.SQLite,
+    "Data Source=myapp.db"
+);
+
+// In-memory cache for fast reads
+// Automatic synchronization with database
+// Thread-safe with ReaderWriterLockSlim
+// Call Refresh() to reload from database
+```
+
+## IRepository Interface
+
+All repositories implement the same interface:
+
+```csharp
+public interface IRepository<T>
 {
-    [PrimaryKey]
-    public string Key { get; set; }
-    public string Value { get; set; }
+    // Create
+    int Insert(T entity);
+    int InsertWithIdentity(T entity);
+    long InsertWithInt64Identity(T entity);
+    int InsertRange(IEnumerable<T> entities);
+
+    // Read
+    IEnumerable<T> GetAll();
+    IEnumerable<T> Find(Expression<Func<T, bool>> predicate);
+    T FirstOrDefault(Expression<Func<T, bool>> predicate);
+    IEnumerable<TResult> Select<TResult>(Expression<Func<T, TResult>> selector);
+    IEnumerable<TResult> Query<TResult>(Func<IQueryable<T>, IEnumerable<TResult>> query);
+
+    // Update
+    int Update(T entity);
+    int UpdateRange(IEnumerable<T> entities);
+
+    // Delete
+    int Delete(T entity);
+    int DeleteRange(IEnumerable<T> entities);
+    int DeleteMany(Expression<Func<T, bool>> predicate);
+
+    // Count & Exists
+    int Count();
+    int Count(Expression<Func<T, bool>> predicate);
+    bool Exists(Expression<Func<T, bool>> predicate);
 }
 ```
 
 ## Advanced Features
 
-### Runtime Configuration Overrides
+### Complex Queries
+
+Use the `Query` method for advanced LINQ operations:
 
 ```csharp
-// Temporarily override configuration
-using (var scope = serviceProvider.CreateScopedRepositoryContext())
-{
-    scope.Override<Product>(config =>
-    {
-        config.Strategy = RepositoryStrategy.InMemory;
-        config.EnableLogging = true;
-    });
-    
-    // Repository uses overridden configuration within this scope
-    var products = repository.GetAll();
-} // Original configuration restored
-```
-
-### Fluent Configuration
-
-```csharp
-services.ConfigureRepositoryOverrides(builder =>
-{
-    builder
-        .ForEntity<Product>()
-        .UseInMemory()
-        .EnableLogging()
-        .Apply();
-});
+var results = repository.Query(q => 
+    q.Where(p => p.Price > 10)
+     .OrderBy(p => p.Name)
+     .GroupBy(p => p.Category)
+     .Select(g => new { Category = g.Key, Count = g.Count() })
+);
 ```
 
 ### Bulk Operations
 
 ```csharp
-// Efficient bulk insert using database-specific optimizations
-var products = GenerateProducts(10000);
-var count = repository.InsertRange(products);
+var products = GenerateProducts(1000);
+var insertedCount = repository.InsertRange(products);
+var updatedCount = repository.UpdateRange(products);
+var deletedCount = repository.DeleteRange(products);
 ```
 
-## Thread Safety
+### Thread Safety
 
-All repository implementations are thread-safe:
+All repositories are thread-safe:
 
 ```csharp
-// Safe for concurrent operations
-var tasks = new List<Task>();
-
-// Multiple readers
-for (int i = 0; i < 10; i++)
+var tasks = Enumerable.Range(0, 10).Select(i => Task.Run(() =>
 {
-    tasks.Add(Task.Run(() => 
-    {
-        var products = repository.GetAll();
-    }));
-}
-
-// Multiple writers
-for (int i = 0; i < 5; i++)
-{
-    tasks.Add(Task.Run(() => 
-    {
-        repository.Insert(new Product { Name = $"Product {i}" });
-    }));
-}
+    repository.Insert(new Product { Name = $"Product {i}" });
+}));
 
 await Task.WhenAll(tasks);
 ```
 
+## Entity Mapping
+
+The library uses smart entity mapping with these key components:
+
+- **EntityMapping**: Handles database schema and table names
+- **EntityOperations**: Manages entity manipulation and identity
+- **EntityCloner**: Creates deep copies for data isolation
+- **EntityMerger**: Updates entity values during operations
+- **IdentityManager**: Auto-generates identity values
+- **PrimaryKeyHelper**: Extracts and manages primary keys
+
+### Automatic Mapping
+
+All public properties with getters and setters are automatically mapped:
+
+```csharp
+public class Customer
+{
+    [PrimaryKey, Identity]
+    public int Id { get; set; }
+    
+    // These are all automatically mapped
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public DateTime CreatedAt { get; set; }
+    
+    // Properties without setter are ignored
+    public string FullName => $"{FirstName} {LastName}";
+}
+```
+
 ## Database Provider Support
 
-The library uses linq2db and supports all its providers. Simply install the appropriate package and configure:
+### SQLite (Default)
+
+```csharp
+var repository = new DatabaseRepository<Product>(
+    LinqToDB.ProviderName.SQLite,
+    "Data Source=app.db"
+);
+```
 
 ### SQL Server
+
 ```bash
 dotnet add package linq2db.SqlServer
 ```
 
 ```csharp
-options.ProviderName = LinqToDB.ProviderName.SqlServer2019;
-options.ConnectionStringTemplate = "Server={Server};Database={Database};Trusted_Connection=true;";
+var repository = new DatabaseRepository<Product>(
+    LinqToDB.ProviderName.SqlServer2019,
+    "Server=localhost;Database=MyApp;Trusted_Connection=true;"
+);
 ```
 
 ### PostgreSQL
+
 ```bash
 dotnet add package linq2db.PostgreSQL
 ```
 
 ```csharp
-options.ProviderName = LinqToDB.ProviderName.PostgreSQL15;
-options.ConnectionStringTemplate = "Host={Server};Database={Database};Username={User};Password={Password}";
+var repository = new DatabaseRepository<Product>(
+    LinqToDB.ProviderName.PostgreSQL15,
+    "Host=localhost;Database=myapp;Username=user;Password=pass"
+);
 ```
 
-### MySQL
+## Performance Considerations
+
+- **InMemoryRepository**: Fastest for small datasets, no persistence
+- **DatabaseRepository**: Direct database access, best for large datasets
+- **CachedRepository**: Optimal for read-heavy workloads with moderate writes
+- Deep copy operations in InMemoryRepository add overhead but ensure data integrity
+- SQLite WAL mode enabled for better concurrent performance
+
+## Testing
+
+The library includes comprehensive unit tests:
+
 ```bash
-dotnet add package linq2db.MySql
+dotnet test
 ```
+
+Example test:
 
 ```csharp
-options.ProviderName = LinqToDB.ProviderName.MySql80;
-options.ConnectionStringTemplate = "Server={Server};Database={Database};Uid={User};Pwd={Password}";
+[Test]
+public void Repository_Should_Handle_Concurrent_Operations()
+{
+    var repository = new InMemoryRepository<TestEntity>();
+    
+    Parallel.For(0, 100, i =>
+    {
+        repository.Insert(new TestEntity { Name = $"Entity {i}" });
+    });
+    
+    Assert.AreEqual(100, repository.Count());
+}
 ```
 
 ## Important Notes
@@ -295,75 +349,35 @@ options.ConnectionStringTemplate = "Server={Server};Database={Database};Uid={Use
 
 ### This Library IS for:
 - ✅ Simple, fast repository pattern implementation
-- ✅ Caching and in-memory data strategies
+- ✅ Testing with in-memory repositories
+- ✅ Caching strategies with database backing
 - ✅ Thread-safe data access
 - ✅ Clean abstraction over linq2db
-
-### Entity Guidelines
-
-1. **Automatic Property Mapping**: All public properties with getters and setters are automatically mapped as columns - no `[Column]` attribute needed!
-2. **Standard .NET Attributes Support**: Use familiar DataAnnotations attributes which are automatically translated to linq2db:
-   - `[Key]` → `[PrimaryKey]`
-   - `[Required]` → NOT NULL constraint
-   - `[MaxLength]`, `[StringLength]` → Column length
-   - `[DatabaseGenerated(DatabaseGeneratedOption.Identity)]` → `[Identity]`
-   - `[NotMapped]` → Excludes property from mapping
-   - `[Table]`, `[Column]` → Table and column naming
-3. **Use linq2db attributes** for advanced mapping (`[PrimaryKey]`, `[Identity]`, `[Column]`, etc.) - these take precedence over automatic mapping
-4. **Use `int` for Identity columns with SQLite** (SQLite AUTOINCREMENT only works with INTEGER)
-5. **Let linq2db handle table creation** with all mapped properties (or use proper migration tools for production)
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│           Application Layer                 │
-└─────────────┬───────────────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────────────┐
-│         IRepository<T> Interface            │
-└─────────────┬───────────────────────────────┘
-              │
-      ┌───────┴───────┬──────────────┐
-      ▼               ▼              ▼
-┌──────────┐   ┌──────────┐   ┌──────────┐
-│InMemory  │   │Database  │   │ Cached   │
-│Repository│   │Repository│   │Repository│
-└──────────┘   └────┬─────┘   └────┬─────┘
-                    │               │
-                    ▼               ▼
-              ┌──────────┐   ┌──────────┐
-              │ linq2db  │   │ linq2db  │
-              └────┬─────┘   └────┬─────┘
-                   │               │
-                   ▼               ▼
-              ┌──────────┐   ┌──────────┐
-              │   SQLite │   │   Cache  │
-              │    DB    │   │ + SQLite │
-              └──────────┘   └──────────┘
+Application Layer
+        ↓
+IRepository<T> Interface
+        ↓
+    ┌───┴───┬──────────┐
+    ↓       ↓          ↓
+InMemory  Database  Cached
+    │       │          │
+    │    linq2db    linq2db
+    │       ↓          ↓
+Memory   Database  Memory+DB
 ```
 
-## Testing
-
-The library includes comprehensive tests demonstrating:
-- Thread safety under concurrent load
-- Attribute-based configuration
-- Runtime configuration overrides
-- All three repository strategies
-- Bulk operations
-
-Run tests:
-```bash
-dotnet test
-```
-
-## Performance Considerations
-
-- **InMemoryRepository**: Fastest for small datasets, no persistence
-- **DatabaseRepository**: Direct database access, good for large datasets
-- **CachedRepository**: Best for read-heavy workloads with moderate write frequency
-- **Bulk operations**: Automatically use provider-specific optimizations (SqlBulkCopy for SQL Server, etc.)
+Key Components:
+- **IRepository**: Unified interface for all implementations
+- **InMemoryRepository**: Pure memory storage with thread safety
+- **DatabaseRepository**: Direct database operations via linq2db
+- **CachedRepository**: Hybrid approach with cache + persistence
+- **EntityOperations**: Core entity manipulation logic
+- **EntityMapping**: Database schema handling
+- **IdentityManager**: Auto-incrementing ID management
 
 ## Contributing
 
@@ -381,20 +395,9 @@ MIT License - see LICENSE file for details
 
 - [linq2db](https://github.com/linq2db/linq2db) (v5.4.1) - LINQ to database provider
 - [Microsoft.Data.Sqlite](https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/) (v9.0.1) - SQLite provider
-- [Microsoft.Extensions.DependencyInjection.Abstractions](https://www.nuget.org/packages/Microsoft.Extensions.DependencyInjection.Abstractions/) (v8.0.0) - DI abstractions
+- .NET Standard 2.0 / .NET 8.0 compatible
 
 ## Support
 
 - Create an issue on GitHub for bugs or feature requests
-- See [CLAUDE.md](CLAUDE.md) for AI assistant integration
-- Check [MISSING_IMPLEMENTATIONS.md](MISSING_IMPLEMENTATIONS.md) for known limitations
-- Review [SQL_SERVER_SUPPORT_SIMPLIFIED.md](SQL_SERVER_SUPPORT_SIMPLIFIED.md) for database provider setup
-
-## Version History
-
-### 1.0.0
-- Initial release with three repository strategies
-- Thread-safe implementations
-- Attribute-based configuration
-- Runtime configuration overrides
-- linq2db integration for all database operations
+- See [CLAUDE.md](CLAUDE.md) for AI assistant integration guidelines

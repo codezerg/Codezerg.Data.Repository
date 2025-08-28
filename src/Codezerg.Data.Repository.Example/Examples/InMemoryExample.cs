@@ -1,5 +1,5 @@
 using Codezerg.Data.Repository.Example.Models;
-using Codezerg.Data.Repository.Implementations;
+using Codezerg.Data.Repository;
 
 namespace Codezerg.Data.Repository.Example.Examples;
 

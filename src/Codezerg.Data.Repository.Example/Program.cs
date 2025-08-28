@@ -10,6 +10,18 @@ class Program
         Console.WriteLine("  Codezerg.Data.Repository Examples");
         Console.WriteLine("====================================");
         
+        // Check if we should run in non-interactive mode
+        bool isInteractive = Environment.UserInteractive && !Console.IsInputRedirected;
+        
+        if (!isInteractive || args.Length > 0)
+        {
+            // Run all examples in non-interactive mode
+            Console.WriteLine("\nRunning in non-interactive mode...\n");
+            RunAllExamplesNonInteractive();
+            return;
+        }
+        
+        // Interactive mode
         bool exit = false;
         while (!exit)
         {
@@ -92,5 +104,32 @@ class Program
         DependencyInjectionExample.Run();
         
         Console.WriteLine("\n========== ALL EXAMPLES COMPLETED ==========");
+    }
+    
+    static void RunAllExamplesNonInteractive()
+    {
+        Console.WriteLine("========== RUNNING ALL EXAMPLES ==========\n");
+        
+        try
+        {
+            Console.WriteLine(">>> InMemory Repository Example");
+            InMemoryExample.Run();
+            
+            Console.WriteLine("\n>>> Database Repository Example");
+            DatabaseExample.Run();
+            
+            Console.WriteLine("\n>>> Cached Repository Example");
+            CachedExample.Run();
+            
+            Console.WriteLine("\n>>> Dependency Injection Example");
+            DependencyInjectionExample.Run();
+            
+            Console.WriteLine("\n========== ALL EXAMPLES COMPLETED ==========");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"\nError running examples: {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
+        }
     }
 }
