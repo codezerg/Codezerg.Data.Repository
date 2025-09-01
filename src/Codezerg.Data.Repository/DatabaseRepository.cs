@@ -28,22 +28,27 @@ namespace Codezerg.Data.Repository
             {
                 using (var db = CreateConnection())
                 {
-                    db.GetTable<T>().Any();
-                    tableExists = true;
-                }
-            }
-            catch
-            {
-                tableExists = false;
-            }
+                    try
+                    {
+                        db.GetTable<T>().Any();
+                        tableExists = true;
+                    }
+                    catch
+                    {
+                        tableExists = false;
+                    }
 
-            if (!tableExists)
-            {
-                using (var db = CreateConnection())
-                {
-                    // Let linq2db handle table creation with its own mapping
-                    db.CreateTable<T>();
+                    if (!tableExists)
+                    {
+                        // Let linq2db handle table creation with its own mapping
+                        db.CreateTable<T>();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing database repository: {ex.Message}");
+                throw;
             }
         }
 
