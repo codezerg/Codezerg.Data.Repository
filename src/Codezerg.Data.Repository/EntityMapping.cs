@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
 using LinqToDB.Mapping;
@@ -35,9 +34,7 @@ namespace Codezerg.Data.Repository
             }
             else
             {
-                // Check for System.ComponentModel.DataAnnotations.Schema.TableAttribute
-                var dataAnnotationsTableAttr = entityType.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.TableAttribute>(true);
-                _tableName = dataAnnotationsTableAttr?.Name ?? entityType.Name;
+                _tableName = entityType.Name;
             }
 
             return _tableName;
@@ -123,14 +120,6 @@ namespace Codezerg.Data.Repository
                 return;
             }
 
-            // Check for NotMapped attribute first
-            var notMappedAttr = property.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute>();
-            if (notMappedAttr != null)
-            {
-                // Add NotColumn attribute to exclude from mapping
-                entityBuilder.HasAttribute(property, new NotColumnAttribute());
-                return;
-            }
 
             // Skip read-only properties (computed properties)
             if (!property.CanWrite)
@@ -155,68 +144,17 @@ namespace Codezerg.Data.Repository
                 return;
             }
 
-            // Process DataAnnotations and translate them to linq2db attributes
-
-            // Check if property already has PrimaryKey or Identity attributes from linq2db
-            var hasPrimaryKey = property.GetCustomAttribute<PrimaryKeyAttribute>() != null;
-            var hasIdentity = property.GetCustomAttribute<IdentityAttribute>() != null;
-
-            // Key attribute -> PrimaryKey (only if not already present)
-            var keyAttr = property.GetCustomAttribute<KeyAttribute>();
-            if (keyAttr != null && !hasPrimaryKey)
-            {
-                entityBuilder.HasAttribute(property, new PrimaryKeyAttribute());
-            }
-
-            // DatabaseGenerated(Identity) -> Identity (only if not already present)
-            var dbGeneratedAttr = property.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.DatabaseGeneratedAttribute>();
-            if (dbGeneratedAttr != null && dbGeneratedAttr.DatabaseGeneratedOption == System.ComponentModel.DataAnnotations.Schema.DatabaseGeneratedOption.Identity && !hasIdentity)
-            {
-                entityBuilder.HasAttribute(property, new IdentityAttribute());
-            }
 
             // Build column attribute with all settings
             var columnAttribute = new ColumnAttribute();
             bool hasColumnSettings = false;
 
-            // Column name from DataAnnotations Column attribute
-            var dataAnnotationsColumnAttr = property.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.ColumnAttribute>();
-            if (dataAnnotationsColumnAttr != null)
-            {
-                if (!string.IsNullOrEmpty(dataAnnotationsColumnAttr.Name))
-                {
-                    columnAttribute.Name = dataAnnotationsColumnAttr.Name;
-                    hasColumnSettings = true;
-                }
+            // Use property name as column name by default
+            columnAttribute.Name = property.Name;
+            hasColumnSettings = true;
 
-                if (!string.IsNullOrEmpty(dataAnnotationsColumnAttr.TypeName))
-                {
-                    columnAttribute.DataType = LinqToDB.DataType.Undefined; // Will use database-specific type name
-                    columnAttribute.DbType = dataAnnotationsColumnAttr.TypeName;
-                    hasColumnSettings = true;
-                }
-
-                if (dataAnnotationsColumnAttr.Order >= 0)
-                {
-                    columnAttribute.Order = dataAnnotationsColumnAttr.Order;
-                    hasColumnSettings = true;
-                }
-            }
-            else
-            {
-                // Use property name as column name by default
-                columnAttribute.Name = property.Name;
-                hasColumnSettings = true;
-            }
-
-            // Required attribute -> NOT NULL
-            var requiredAttr = property.GetCustomAttribute<RequiredAttribute>();
-            if (requiredAttr != null)
-            {
-                columnAttribute.CanBeNull = false;
-                hasColumnSettings = true;
-            }
-            else if (IsNullableType(property.PropertyType))
+            // Check nullability based on type
+            if (IsNullableType(property.PropertyType))
             {
                 columnAttribute.CanBeNull = true;
                 hasColumnSettings = true;
@@ -228,53 +166,6 @@ namespace Codezerg.Data.Repository
                 hasColumnSettings = true;
             }
 
-            // MaxLength/StringLength attributes -> Length
-            var maxLengthAttr = property.GetCustomAttribute<MaxLengthAttribute>();
-            var stringLengthAttr = property.GetCustomAttribute<StringLengthAttribute>();
-
-            if (maxLengthAttr != null && maxLengthAttr.Length > 0)
-            {
-                columnAttribute.Length = maxLengthAttr.Length;
-                hasColumnSettings = true;
-            }
-            else if (stringLengthAttr != null && stringLengthAttr.MaximumLength > 0)
-            {
-                columnAttribute.Length = stringLengthAttr.MaximumLength;
-                hasColumnSettings = true;
-            }
-
-            // DataType attribute for special types
-            var dataTypeAttr = property.GetCustomAttribute<System.ComponentModel.DataAnnotations.DataTypeAttribute>();
-            if (dataTypeAttr != null && string.IsNullOrEmpty(columnAttribute.DbType))
-            {
-                switch (dataTypeAttr.DataType)
-                {
-                    case DataType.Date:
-                        columnAttribute.DataType = LinqToDB.DataType.Date;
-                        hasColumnSettings = true;
-                        break;
-                    case DataType.Time:
-                        columnAttribute.DataType = LinqToDB.DataType.Time;
-                        hasColumnSettings = true;
-                        break;
-                    case DataType.DateTime:
-                        columnAttribute.DataType = LinqToDB.DataType.DateTime;
-                        hasColumnSettings = true;
-                        break;
-                    case DataType.Currency:
-                        columnAttribute.DataType = LinqToDB.DataType.Decimal;
-                        columnAttribute.Precision = 19;
-                        columnAttribute.Scale = 4;
-                        hasColumnSettings = true;
-                        break;
-                    case DataType.Text:
-                    case DataType.MultilineText:
-                    case DataType.Html:
-                        columnAttribute.DataType = LinqToDB.DataType.Text;
-                        hasColumnSettings = true;
-                        break;
-                }
-            }
 
             // Handle enum types - they need explicit DataType
             if (property.PropertyType.IsEnum)

@@ -16,7 +16,7 @@ A simplified .NET repository pattern library built on top of [linq2db](https://g
 
 - 🎯 **Automatic Property Mapping**
   - All public properties with get/set are automatically mapped as database columns
-  - Supports both linq2db and .NET DataAnnotations attributes
+  - Uses linq2db attributes for entity mapping configuration
   - Smart identity management with auto-incrementing primary keys
 
 - 🗄️ **Database Support via linq2db**
@@ -51,26 +51,7 @@ public class Product
 }
 ```
 
-Or use standard .NET attributes:
-
-```csharp
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-[Table("Products")]
-public class Product
-{
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
-    
-    [Required]
-    [MaxLength(100)]
-    public string Name { get; set; }
-    
-    public decimal Price { get; set; }
-}
-```
+Properties without attributes are automatically mapped using their names:
 
 ### 2. Create Repository
 

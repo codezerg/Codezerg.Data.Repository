@@ -40,7 +40,7 @@ This is a .NET Standard 2.0 repository pattern library providing three implement
 
 - **IRepository<T>**: Core interface defining CRUD operations (src/Codezerg.Data.Repository/IRepository.cs:8)
 - **EntityOperations<T>**: Handles entity manipulation, identity management, and deep copying (src/Codezerg.Data.Repository/EntityOperations.cs:13)
-- **EntityMapping<T>**: Manages database mapping schemas and table names with automatic DataAnnotations to linq2db attribute mapping (src/Codezerg.Data.Repository/EntityMapping.cs:13)
+- **EntityMapping<T>**: Manages database mapping schemas and table names (src/Codezerg.Data.Repository/EntityMapping.cs:13)
 - **PrimaryKeyHelper<T>**: Manages primary key detection and operations (src/Codezerg.Data.Repository/PrimaryKeyHelper.cs)
 - **IdentityManager<T>**: Manages auto-incrementing identity values for entities (src/Codezerg.Data.Repository/IdentityManager.cs)
 - **EntityCloner<T>**: Creates deep copies of entities for data isolation (src/Codezerg.Data.Repository/EntityCloner.cs)
@@ -61,16 +61,14 @@ This is a .NET Standard 2.0 repository pattern library providing three implement
 - **DatabaseRepository**: Thread-safe through connection-per-operation pattern
 - **CachedRepository**: Fully thread-safe using ReaderWriterLockSlim for coordinating memory and database operations
 
-### DataAnnotations Support
+### Attribute Support
 
-The library automatically maps System.ComponentModel.DataAnnotations attributes to linq2db attributes:
-- `[Key]` → `[PrimaryKey]`
-- `[Required]` → `CanBeNull = false`
-- `[MaxLength]` / `[StringLength]` → `Length`
-- `[Column]` → Column name and type mapping
-- `[Table]` → Table name
-- `[NotMapped]` → `[NotColumn]`
-- `[DatabaseGenerated(Identity)]` → `[Identity]`
+The library uses linq2db attributes for entity mapping:
+- `[PrimaryKey]` - Marks primary key properties
+- `[Identity]` - Marks auto-incrementing identity columns
+- `[Column]` - Specifies column name, type, nullability, and length
+- `[Table]` - Specifies table name
+- `[NotColumn]` - Excludes property from mapping
 
 ### Package Dependencies
 

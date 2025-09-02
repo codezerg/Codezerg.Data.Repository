@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using LinqToDB.Mapping;
 
 namespace Codezerg.Data.Repository.Tests.TestEntities
@@ -128,14 +127,11 @@ namespace Codezerg.Data.Repository.Tests.TestEntities
         [PrimaryKey, Identity]
         public int Id { get; set; }
         
-        [Required]
-        [MaxLength(100)]
+        [Column(CanBeNull = false, Length = 100)]
         public string RequiredField { get; set; } = string.Empty;
         
-        [Range(0, 100)]
         public int RangeField { get; set; }
         
-        [EmailAddress]
         public string Email { get; set; } = string.Empty;
     }
 }

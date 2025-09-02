@@ -1,6 +1,5 @@
 using LinqToDB.Mapping;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Reflection;
 
@@ -29,9 +28,7 @@ namespace Codezerg.Data.Repository
         private IReadOnlyList<PropertyInfo> GetPrimaryKeyProperties()
         {
             return typeof(T).GetProperties()
-                .Where(p =>
-                    p.GetCustomAttributes<KeyAttribute>(true).Any() ||
-                    p.GetCustomAttributes<PrimaryKeyAttribute>(true).Any())
+                .Where(p => p.GetCustomAttributes<PrimaryKeyAttribute>(true).Any())
                 .ToList();
         }
 
