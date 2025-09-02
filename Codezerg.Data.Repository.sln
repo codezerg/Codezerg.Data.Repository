@@ -11,7 +11,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Codezerg.Data.Repository.Te
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Codezerg.Data.Repository.Example", "src\Codezerg.Data.Repository.Example\Codezerg.Data.Repository.Example.csproj", "{165356B9-C058-3125-28FB-21103FD9C783}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Codezerg.Data.Repository.Example", "demo\Codezerg.Data.Repository.Example\Codezerg.Data.Repository.Example.csproj", "{165356B9-C058-3125-28FB-21103FD9C783}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "demo", "demo", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -66,7 +68,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{0BAD1A67-0BFB-2B62-FABB-2CFA2CFF8283} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{2B2F6D3E-C019-4E43-AB84-672E13B7F5A3} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
-		{165356B9-C058-3125-28FB-21103FD9C783} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{165356B9-C058-3125-28FB-21103FD9C783} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {334E6919-AED4-4EE5-B5FC-590FD239ECE7}

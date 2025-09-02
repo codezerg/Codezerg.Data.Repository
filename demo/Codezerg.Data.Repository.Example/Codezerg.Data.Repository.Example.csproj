@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Codezerg.Data.Repository\Codezerg.Data.Repository.csproj" />
+    <ProjectReference Include="..\..\src\Codezerg.Data.Repository\Codezerg.Data.Repository.csproj" />
   </ItemGroup>
 
 </Project>
