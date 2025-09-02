@@ -6,234 +6,233 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 
-namespace Codezerg.Data.Repository
+namespace Codezerg.Data.Repository;
+
+public class DatabaseRepository<T> : IRepository<T> where T : class, new()
 {
-    public class DatabaseRepository<T> : IRepository<T> where T : class, new()
+    private readonly string _providerName;
+    private readonly string _connectionString;
+    private readonly MappingSchema _mappingSchema;
+    private readonly EntityOperations<T> _entity;
+
+    public DatabaseRepository(string providerName, string connectionString)
     {
-        private readonly string _providerName;
-        private readonly string _connectionString;
-        private readonly MappingSchema _mappingSchema;
-        private readonly EntityOperations<T> _entity;
+        _entity = new EntityOperations<T>();
+        _providerName = providerName;
+        _connectionString = connectionString;
+        _mappingSchema = EntityMapping<T>.GetMappingSchema();
 
-        public DatabaseRepository(string providerName, string connectionString)
+        bool tableExists = false;
+
+        try
         {
-            _entity = new EntityOperations<T>();
-            _providerName = providerName;
-            _connectionString = connectionString;
-            _mappingSchema = EntityMapping<T>.GetMappingSchema();
-
-            bool tableExists = false;
-
-            try
+            using (var db = CreateConnection())
             {
-                using (var db = CreateConnection())
+                try
                 {
-                    try
-                    {
-                        db.GetTable<T>().Any();
-                        tableExists = true;
-                    }
-                    catch
-                    {
-                        tableExists = false;
-                    }
-
-                    if (!tableExists)
-                    {
-                        // Let linq2db handle table creation with its own mapping
-                        db.CreateTable<T>();
-                    }
+                    db.GetTable<T>().Any();
+                    tableExists = true;
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error initializing database repository: {ex.Message}");
-                throw;
-            }
-        }
-
-        private DataConnection CreateConnection()
-        {
-            var db = new DataConnection(_providerName, _connectionString, _mappingSchema);
-            if (db.DataProvider.Name.ToLowerInvariant().Contains("sqlite"))
-            {
-                db.Execute("pragma journal_mode = WAL;");
-                //db.Execute("pragma page_size = 4096;");
-                //db.Execute("pragma synchronous = normal;");
-                //db.Execute("pragma temp_store = memory;");
-            }
-            return db;
-        }
-
-        // Create Operations
-        public int Insert(T entity)
-        {
-            using (var db = CreateConnection())
-            {
-                return db.Insert(entity);
-            }
-        }
-
-        public int InsertWithIdentity(T entity)
-        {
-            using (var db = CreateConnection())
-            {
-                var id = Convert.ToInt32(db.InsertWithIdentity(entity));
-
-                // If we have an identity property, copy the generated value back to the original entity
-                if (_entity.IdentityManager.IdentityProperty != null)
+                catch
                 {
-                    _entity.IdentityManager.IdentityProperty.SetValue(entity, id);
+                    tableExists = false;
                 }
 
-                return id;
-            }
-        }
-
-        public long InsertWithInt64Identity(T entity)
-        {
-            using (var db = CreateConnection())
-            {
-                var id = Convert.ToInt64(db.InsertWithIdentity(entity));
-
-                // If we have an identity property, copy the generated value back to the original entity
-                if (_entity.IdentityManager.IdentityProperty != null)
+                if (!tableExists)
                 {
-                    _entity.IdentityManager.IdentityProperty.SetValue(entity, id);
+                    // Let linq2db handle table creation with its own mapping
+                    db.CreateTable<T>();
                 }
-
-                return id;
             }
         }
-
-        public int InsertRange(IEnumerable<T> entities)
+        catch (Exception ex)
         {
-            using (var db = CreateConnection())
-            {
-                var count = 0;
-                foreach (var entity in entities)
-                {
-                    count += db.Insert(entity);
-                }
-                return count;
-            }
+            Console.WriteLine($"Error initializing database repository: {ex.Message}");
+            throw;
         }
+    }
 
-        // Read Operations
-        public IEnumerable<T> GetAll()
+    private DataConnection CreateConnection()
+    {
+        var db = new DataConnection(_providerName, _connectionString, _mappingSchema);
+        if (db.DataProvider.Name.ToLowerInvariant().Contains("sqlite"))
         {
-            using (var db = CreateConnection())
-            {
-                return db.GetTable<T>().ToList();
-            }
+            db.Execute("pragma journal_mode = WAL;");
+            //db.Execute("pragma page_size = 4096;");
+            //db.Execute("pragma synchronous = normal;");
+            //db.Execute("pragma temp_store = memory;");
         }
+        return db;
+    }
 
-        public IEnumerable<T> Find(Expression<Func<T, bool>> predicate)
+    // Create Operations
+    public int Insert(T entity)
+    {
+        using (var db = CreateConnection())
         {
-            using (var db = CreateConnection())
-            {
-                return db.GetTable<T>().Where(predicate).ToList();
-            }
+            return db.Insert(entity);
         }
+    }
 
-        public T FirstOrDefault(Expression<Func<T, bool>> predicate)
+    public int InsertWithIdentity(T entity)
+    {
+        using (var db = CreateConnection())
         {
-            using (var db = CreateConnection())
+            var id = Convert.ToInt32(db.InsertWithIdentity(entity));
+
+            // If we have an identity property, copy the generated value back to the original entity
+            if (_entity.IdentityManager.IdentityProperty != null)
             {
-                return db.GetTable<T>().FirstOrDefault(predicate);
+                _entity.IdentityManager.IdentityProperty.SetValue(entity, id);
             }
+
+            return id;
         }
+    }
 
-        public IEnumerable<TResult> Select<TResult>(Expression<Func<T, TResult>> selector)
+    public long InsertWithInt64Identity(T entity)
+    {
+        using (var db = CreateConnection())
         {
-            using (var db = CreateConnection())
+            var id = Convert.ToInt64(db.InsertWithIdentity(entity));
+
+            // If we have an identity property, copy the generated value back to the original entity
+            if (_entity.IdentityManager.IdentityProperty != null)
             {
-                return db.GetTable<T>().Select(selector).ToList();
+                _entity.IdentityManager.IdentityProperty.SetValue(entity, id);
             }
+
+            return id;
         }
+    }
 
-        public IEnumerable<TResult> Query<TResult>(Func<IQueryable<T>, IEnumerable<TResult>> query)
+    public int InsertRange(IEnumerable<T> entities)
+    {
+        using (var db = CreateConnection())
         {
-            using (var db = CreateConnection())
+            var count = 0;
+            foreach (var entity in entities)
             {
-                return query(db.GetTable<T>()).ToList();
+                count += db.Insert(entity);
             }
+            return count;
         }
+    }
 
-        // Update Operations
-        public int Update(T entity)
+    // Read Operations
+    public IEnumerable<T> GetAll()
+    {
+        using (var db = CreateConnection())
         {
-            using (var db = CreateConnection())
-            {
-                return db.Update(entity);
-            }
+            return db.GetTable<T>().ToList();
         }
+    }
 
-        public int UpdateRange(IEnumerable<T> entities)
+    public IEnumerable<T> Find(Expression<Func<T, bool>> predicate)
+    {
+        using (var db = CreateConnection())
         {
-            using (var db = CreateConnection())
-            {
-                var count = 0;
-                foreach (var entity in entities)
-                {
-                    count += db.Update(entity);
-                }
-                return count;
-            }
+            return db.GetTable<T>().Where(predicate).ToList();
         }
+    }
 
-        // Delete Operations
-        public int Delete(T entity)
+    public T FirstOrDefault(Expression<Func<T, bool>> predicate)
+    {
+        using (var db = CreateConnection())
         {
-            using (var db = CreateConnection())
-            {
-                return db.Delete(entity);
-            }
+            return db.GetTable<T>().FirstOrDefault(predicate);
         }
+    }
 
-        public int DeleteRange(IEnumerable<T> entities)
+    public IEnumerable<TResult> Select<TResult>(Expression<Func<T, TResult>> selector)
+    {
+        using (var db = CreateConnection())
         {
-            using (var db = CreateConnection())
-            {
-                var count = 0;
-                foreach (var entity in entities)
-                {
-                    count += db.Delete(entity);
-                }
-                return count;
-            }
+            return db.GetTable<T>().Select(selector).ToList();
         }
+    }
 
-        public int Count()
+    public IEnumerable<TResult> Query<TResult>(Func<IQueryable<T>, IEnumerable<TResult>> query)
+    {
+        using (var db = CreateConnection())
         {
-            using (var db = CreateConnection())
-            {
-                return db.GetTable<T>().Count();
-            }
+            return query(db.GetTable<T>()).ToList();
         }
+    }
 
-        public int Count(Expression<Func<T, bool>> predicate)
+    // Update Operations
+    public int Update(T entity)
+    {
+        using (var db = CreateConnection())
         {
-            using (var db = CreateConnection())
-            {
-                return db.GetTable<T>().Count(predicate);
-            }
+            return db.Update(entity);
         }
+    }
 
-        public bool Exists(Expression<Func<T, bool>> predicate)
+    public int UpdateRange(IEnumerable<T> entities)
+    {
+        using (var db = CreateConnection())
         {
-            using (var db = CreateConnection())
+            var count = 0;
+            foreach (var entity in entities)
             {
-                return db.GetTable<T>().Any(predicate);
+                count += db.Update(entity);
             }
+            return count;
         }
+    }
 
-        public int DeleteMany(Expression<Func<T, bool>> predicate)
+    // Delete Operations
+    public int Delete(T entity)
+    {
+        using (var db = CreateConnection())
         {
-            using (var db = CreateConnection())
+            return db.Delete(entity);
+        }
+    }
+
+    public int DeleteRange(IEnumerable<T> entities)
+    {
+        using (var db = CreateConnection())
+        {
+            var count = 0;
+            foreach (var entity in entities)
             {
-                return db.GetTable<T>().Where(predicate).Delete();
+                count += db.Delete(entity);
             }
+            return count;
+        }
+    }
+
+    public int Count()
+    {
+        using (var db = CreateConnection())
+        {
+            return db.GetTable<T>().Count();
+        }
+    }
+
+    public int Count(Expression<Func<T, bool>> predicate)
+    {
+        using (var db = CreateConnection())
+        {
+            return db.GetTable<T>().Count(predicate);
+        }
+    }
+
+    public bool Exists(Expression<Func<T, bool>> predicate)
+    {
+        using (var db = CreateConnection())
+        {
+            return db.GetTable<T>().Any(predicate);
+        }
+    }
+
+    public int DeleteMany(Expression<Func<T, bool>> predicate)
+    {
+        using (var db = CreateConnection())
+        {
+            return db.GetTable<T>().Where(predicate).Delete();
         }
     }
 }
