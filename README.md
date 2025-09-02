@@ -2,6 +2,10 @@
 
 A simplified .NET repository pattern library built on top of [linq2db](https://github.com/linq2db/linq2db) that provides three implementation strategies with a unified `IRepository<T>` interface. Designed for simplicity, performance, and thread safety.
 
+[![NuGet Version](https://img.shields.io/nuget/v/Codezerg.Data.Repository.svg)](https://www.nuget.org/packages/Codezerg.Data.Repository/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![.NET Standard 2.0](https://img.shields.io/badge/.NET%20Standard-2.0-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
+
 ## Features
 
 - 🚀 **Three Repository Strategies**
