@@ -375,8 +375,7 @@ MIT License - see LICENSE file for details
 ## Dependencies
 
 - [linq2db](https://github.com/linq2db/linq2db) (v5.4.1) - LINQ to database provider
-- [Microsoft.Data.Sqlite](https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/) (v9.0.1) - SQLite provider
-- .NET Standard 2.0 / .NET 8.0 compatible
+- .NET Standard 2.0 compatible (works with .NET Framework 4.6.1+ and .NET Core 2.0+)
 
 ## Support
 

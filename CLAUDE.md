@@ -1,7 +1,6 @@
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-Role: Senior C# engineer focused on Simple, Lovable, Complete applications
 
 ## Build and Development Commands
 
@@ -25,7 +24,7 @@ dotnet pack -c Release
 dotnet test
 
 # Run examples
-dotnet run --project src/Codezerg.Data.Repository.Example
+dotnet run --project demo/Codezerg.Data.Repository.Example
 ```
 
 ## Architecture Overview
@@ -72,48 +71,17 @@ The library uses linq2db attributes for entity mapping:
 
 ### Package Dependencies
 
-- **linq2db (3.7.0)**: ORM for database operations
-- **Microsoft.Data.Sqlite (3.1.0)**: SQLite provider
+- **linq2db (5.4.1)**: ORM for database operations
+- **Microsoft.Data.Sqlite (9.0.1)**: SQLite provider (auto-referenced via linq2db)
 - **Target Framework**: .NET Standard 2.0 (C# 7.3)
 
-## Core Principles
+## Test Framework
 
-**Code Quality:**
-- Split files >300 lines, methods >30 lines
-- Use XML docs for public APIs
-- Ask before adding third-party packages
-- Follow existing project structure and namespaces
-- Treat compiler warnings as errors
-
-**Development Philosophy:**
-- Simplicity over cleverness
-- Explicit over implicit
-- Composition over inheritance
-- Fail fast with clear error messages
-- Write code a 14-year-old could understand
-- Deep copy entities to prevent external modifications
-- Use clear, descriptive names for classes and methods
-
-## Working Modes
-
-**Planner Mode:**
-1. Ask 4-6 clarifying questions about scope and edge cases
-2. Draft step-by-step plan
-3. Get approval before implementing
-4. Announce completion of each phase
-
-**Architecture Mode:**
-1. Ask strategic questions about scale, requirements, constraints
-2. Provide tradeoff analysis with alternatives
-3. Iterate on design based on feedback
-4. Get approval for implementation plan
-
-**Debug Mode:**
-1. Identify 5-7 possible root causes
-2. Narrow to 1-2 most likely culprits
-3. Add targeted logging
-4. Analyze findings comprehensively
-5. Remove logs after approval
+The test project uses:
+- **xUnit** as the test framework
+- **FluentAssertions** for readable test assertions
+- **Moq** for mocking
+- **Microsoft.Extensions.DependencyInjection** for DI testing
 
 ## Repository Interface Methods
 
@@ -144,19 +112,10 @@ The library uses linq2db attributes for entity mapping:
 - `Count(Expression<Func<T, bool>> predicate)`: Count by predicate
 - `Exists(Expression<Func<T, bool>> predicate)`: Check existence
 
-## Testing
-
-The library includes comprehensive unit tests in the `tests/Codezerg.Data.Repository.Tests` project covering:
-- Repository implementations
-- Entity operations
-- Thread safety
-- Primary key detection
-- Identity management
-
 ## Examples
 
-Example implementations are available in `src/Codezerg.Data.Repository.Example/Examples/`:
+Example implementations are available in `demo/Codezerg.Data.Repository.Example/Examples/`:
 - InMemoryExample.cs: Demonstrates in-memory repository usage
 - DatabaseExample.cs: Shows SQLite database repository
 - CachedExample.cs: Illustrates cached repository with persistence
-- DependencyInjectionExample.cs: Dependency injection setup (Note: DI support code may need to be implemented)
+- DependencyInjectionExample.cs: Dependency injection setup

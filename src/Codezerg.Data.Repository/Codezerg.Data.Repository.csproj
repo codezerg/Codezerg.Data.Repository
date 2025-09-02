@@ -3,10 +3,35 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
+		
+		<!-- NuGet Package Metadata -->
+		<PackageId>Codezerg.Data.Repository</PackageId>
+		<Version>1.0.0</Version>
+		<Authors>Codezerg</Authors>
+		<Company>Codezerg</Company>
+		<Description>A simplified .NET repository pattern library with three implementation strategies: InMemoryRepository for testing, DatabaseRepository for direct database access, and CachedRepository for hybrid caching with persistence. Built on linq2db with full thread safety.</Description>
+		<PackageTags>repository;pattern;linq2db;database;cache;inmemory;sqlite;orm;data-access;thread-safe</PackageTags>
+		<PackageProjectUrl>https://github.com/codezerg/Codezerg.Data.Repository</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/codezerg/Codezerg.Data.Repository</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageIcon>icon.png</PackageIcon>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<NoWarn>$(NoWarn);CS1591</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="linq2db" Version="5.4.1" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\..\README.md" Pack="true" PackagePath="\" />
+		<None Include="..\..\LICENSE" Pack="true" PackagePath="\" Condition="Exists('..\..\LICENSE')" />
+		<None Include="..\..\icon.png" Pack="true" PackagePath="\" Condition="Exists('..\..\icon.png')" />
 	</ItemGroup>
 
 </Project>
