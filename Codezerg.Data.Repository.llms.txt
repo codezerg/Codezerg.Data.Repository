@@ -1,0 +1,35 @@
+Codezerg.Data.Repository  
+
+project: .NET Standard 2.0 repository pattern library, C#7.3. target: netstandard2.0. dependencies: linq2db v5.4.1 (brings Microsoft.Data.Sqlite). package metadata: Id=Codezerg.Data.Repository, Version=1.0.0, License=MIT, Authors=Codezerg.  
+
+core abstraction: IRepository<T> (class constraint). methods: Insert(T):int, InsertWithIdentity(T):int, InsertWithInt64Identity(T):long, InsertRange(IEnumerable<T>):int. GetAll():IEnumerable<T>, Find(Expression<Func<T,bool>>):IEnumerable<T>, FirstOrDefault(Expression<Func<T,bool>>):T, Select<TResult>(Expression<Func<T,TResult>>):IEnumerable<TResult>, Query<TResult>(Func<IQueryable<T>,IEnumerable<TResult>>):IEnumerable<TResult>. Update(T):int, UpdateRange(IEnumerable<T>):int. Delete(T):int, DeleteRange(IEnumerable<T>):int, DeleteMany(Expression<Func<T,bool>>):int. Count():int, Count(Expression<Func<T,bool>>):int. Exists(Expression<Func<T,bool>>):bool.  
+
+implementations:  
+InMemoryRepository<T>: stores List<T>, uses ReaderWriterLockSlim(NoRecursion). protects via EntityOperations<T>, deep copy isolation. methods acquire locks, perform CRUD, identity assignment, etc. Clear() resets, resets identity seed. thread‑safe.  
+
+DatabaseRepository<T>: wraps LinqToDB.DataConnection. fields: _providerName, _connectionString, _mappingSchema, _entity(EntityOperations<T>). ensures table existence on ctor via CreateTable<T>() if missing. CreateConnection(): DataConnection(provider,conn, schema), enables WAL for sqlite. Insert/InsertWithIdentity/InsertWithInt64Identity: uses db.Insert / db.InsertWithIdentity, copy generated identity back if property. InsertRange loops. GetAll: ToList. Find: Where(predicate). FirstOrDefault. Select. Query(Func<IQueryable<T>,IEnumerable<TResult>>). Update: db.Update. UpdateRange loops. Delete: db.Delete. DeleteRange loops. DeleteMany(predicate): Table.Where(predicate).Delete(). Count/Exists accordingly.  
+
+CachedRepository<T>: composition of InMemoryRepository<T>, DatabaseRepository<T>, plus ReaderWriterLockSlim. constructor(provider,connection) loads data. LoadDataFromDatabase: clear memory repo, get all entities from db repo, insertRange to memory. Fields: _isInitialized bool. EnsureInitialized calls LoadDataFromDatabase if false. Insert: db.Insert, if >0 then memory.Insert. InsertWithIdentity/InsertWithInt64Identity: call db repo methods first, then memory. InsertRange similar. Read ops returns memory repo results. Update: update db first then memory. UpdateRange similar. Delete: db then memory. DeleteRange similar. DeleteMany: db repo.DeleteMany(predicate), then memory repo.Find(predicate) and DeleteRange. Count/Exists from memory. Refresh() reload from db. Dispose disposes lock. fully thread‑safe.  
+
+supporting classes:  
+EntityOperations<T>: wraps PrimaryKeyHelper<T> and IdentityManager<T>. Public: PrimaryKeyProperties:IReadOnlyList<PropertyInfo>, IdentityManager. Methods: GetPrimaryKeyValues(entity):Dictionary<string,object>. HaveSamePrimaryKeys(entity1,entity2):bool. PrepareForInsert(entity): returns deep copy with assigned identity if applicable. PrepareForInsertWithIdentity(entity): returns (entity,id). CopyIdentityValue(source,target). FindEntityByPrimaryKeys(IEnumerable<T>,T). UpdateEntityValues(existingEntity,newEntity):via EntityMerger.UpdateEntityProperties, excludes PKs. CreateDeepCopy via EntityCloner.  
+
+PrimaryKeyHelper<T>: caches List<PropertyInfo> with [PrimaryKey] attribute. GetPrimaryKeyValues(entity): dict. HaveSamePrimaryKeys(e1,e2). FindEntityByPrimaryKeys(seq,entity).  
+
+IdentityManager<T>: tracks numeric identity property annotated by [Identity] among PKs. field: _identitySeed long=1. AssignIdentity(entity): if property marked Identity and current value default, assign next identitySeed++ considering property type (int,long,short,byte etc). returns assigned value. ResetIdentitySeed sets=1.  
+
+EntityCloner<T>: CreateDeepCopy(entity): new T, copies CanRead/CanWrite props via reflection.  
+
+EntityMerger<T>: UpdateEntityProperties(target,source,excludeProps). iterate properties, skip excluded, copy values.  
+
+EntityMapping<T>: static class. caches MappingSchema, tableName, database. GetTableName(): from [Table].Name else type.Name. GetDatabaseName(): from [Table].Database else assemblyName. GetMappingSchema(): builds MappingSchema + FluentMappingBuilder. maps table name. for each public instance prop (read/write): ProcessProperty. skip NotColumn/Column annotated (they remain). skip readonly => mark NotColumn. skip collections (List<>, ICollection<>, IEnumerable<>, HashSet<>, Dictionary<,>, arrays) except string => mark NotColumn. else create ColumnAttribute {Name=prop.Name, CanBeNull= true for nullable ref or value?, else false. if enum underlying type then DataType=Int32}. assign attr via entityBuilder.HasAttribute.  
+
+attribute usage: supports [PrimaryKey], [Identity], [Column], [Table], [NotColumn].  
+
+Thread‑safety: InMemory=ReaderWriterLockSlim, db=connection‑per‑operation, cached=ReaderWriterLockSlim for sync.  
+
+datastore: SQLite default. connection string "Data Source=filename.db". WAL mode enabled. Database names derived from type via EntityMapping<T>.GetDatabaseName().  
+
+supported databases: any linq2db provider (SQLite, SQL Server, PostgreSQL, MySQL, etc).  
+
+usage patterns: InMemory=testing/temporary. DatabaseRepository=direct operations, minimal overhead. CachedRepo=read‑heavy caching with persistence.  
