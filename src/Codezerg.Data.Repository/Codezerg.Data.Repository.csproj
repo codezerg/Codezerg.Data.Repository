@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
-		
+
 		<!-- NuGet Package Metadata -->
 		<PackageId>Codezerg.Data.Repository</PackageId>
 		<Version>1.0.0</Version>
@@ -23,6 +23,12 @@
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<NoWarn>$(NoWarn);CS1591</NoWarn>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+			<_Parameter1>Codezerg.Data.Repository.Tests</_Parameter1>
+		</AssemblyAttribute>
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="linq2db" Version="5.4.1" />

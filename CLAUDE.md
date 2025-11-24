@@ -45,6 +45,13 @@ This is a .NET Standard 2.0 repository pattern library providing three implement
 - **EntityCloner<T>**: Creates deep copies of entities for data isolation (src/Codezerg.Data.Repository/EntityCloner.cs)
 - **EntityMerger<T>**: Updates entity properties while preserving primary keys (src/Codezerg.Data.Repository/EntityMerger.cs)
 
+### Automatic Schema Migration Components
+
+- **SchemaManager<T>**: Orchestrates automatic schema migrations, called during repository initialization (src/Codezerg.Data.Repository/Migration/SchemaManager.cs)
+- **SchemaInspector**: Queries database schema to detect tables and columns (src/Codezerg.Data.Repository/Migration/SchemaInspector.cs)
+- **SchemaMigrator**: Applies schema changes (CREATE TABLE, ADD COLUMN, ALTER COLUMN) (src/Codezerg.Data.Repository/Migration/SchemaMigrator.cs)
+- **TableColumn**: Model representing database column metadata (src/Codezerg.Data.Repository/Migration/TableColumn.cs)
+
 ### Repository Selection Strategy
 
 - All three repository types implement `IRepository<T>` interface
@@ -54,11 +61,36 @@ This is a .NET Standard 2.0 repository pattern library providing three implement
 - SQLite databases are stored relative to AppDomain.CurrentDomain.BaseDirectory
 - Database names are derived from entity type via `EntityMapping<T>.GetDatabaseName()`
 
+### Automatic Schema Migrations
+
+The library includes automatic schema migration support for DatabaseRepository and CachedRepository:
+
+- **Automatic Table Creation**: Tables are created automatically if they don't exist
+- **Column Addition**: When properties are added to entities, corresponding columns are added to the database
+- **Column Alteration**: Changes to column types or nullability are detected and applied
+- **SQLite Special Handling**: Uses table recreation pattern for ALTER COLUMN operations (SQLite limitation)
+- **Thread-Safe**: Schema migrations are protected with locks to prevent concurrent modifications
+- **One-Time Execution**: Each migration is applied only once per application lifecycle
+- **Zero Configuration**: No migration files or version tracking required
+
+Migration workflow:
+1. Repository constructor calls `SchemaManager<T>.EnsureSchema()`
+2. `SchemaInspector` checks if table exists and queries current schema
+3. Compares entity definition with database schema
+4. `SchemaMigrator` applies necessary changes (CREATE TABLE, ADD COLUMN, ALTER COLUMN)
+
+Limitations:
+- Column renames are not detected (treated as drop + add)
+- Column deletions are not supported (old columns remain)
+- Index management not included
+- Complex constraints not supported
+
 ### Thread Safety
 
 - **InMemoryRepository**: Fully thread-safe using ReaderWriterLockSlim with NoRecursion policy
 - **DatabaseRepository**: Thread-safe through connection-per-operation pattern
 - **CachedRepository**: Fully thread-safe using ReaderWriterLockSlim for coordinating memory and database operations
+- **Schema Migrations**: Protected with locks in SchemaManager to prevent concurrent schema changes
 
 ### Attribute Support
 

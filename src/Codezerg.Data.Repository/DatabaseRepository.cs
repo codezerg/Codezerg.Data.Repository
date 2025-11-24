@@ -1,10 +1,11 @@
-﻿using LinqToDB;
+using LinqToDB;
 using LinqToDB.Data;
 using LinqToDB.Mapping;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using Codezerg.Data.Repository.Migration;
 
 namespace Codezerg.Data.Repository;
 
@@ -22,27 +23,13 @@ public class DatabaseRepository<T> : IRepository<T> where T : class, new()
         _connectionString = connectionString;
         _mappingSchema = EntityMapping<T>.GetMappingSchema();
 
-        bool tableExists = false;
-
         try
         {
             using (var db = CreateConnection())
             {
-                try
-                {
-                    db.GetTable<T>().Any();
-                    tableExists = true;
-                }
-                catch
-                {
-                    tableExists = false;
-                }
-
-                if (!tableExists)
-                {
-                    // Let linq2db handle table creation with its own mapping
-                    db.CreateTable<T>();
-                }
+                // Automatically ensure schema matches entity definition
+                // This handles table creation, column additions, and column alterations
+                SchemaManager<T>.EnsureSchema(db, _mappingSchema);
             }
         }
         catch (Exception ex)

@@ -23,6 +23,13 @@ A simplified .NET repository pattern library built on top of [linq2db](https://g
   - Uses linq2db attributes for entity mapping configuration
   - Smart identity management with auto-incrementing primary keys
 
+- 🔄 **Automatic Schema Migrations**
+  - Automatically creates tables if they don't exist
+  - Detects and adds new columns when entity properties are added
+  - Handles column type and nullability changes
+  - SQLite-specific ALTER COLUMN handling with table recreation pattern
+  - Zero-configuration, transparent migrations
+
 - 🗄️ **Database Support via linq2db**
   - SQLite (default)
   - SQL Server, PostgreSQL, MySQL, and 30+ other providers via linq2db
@@ -187,6 +194,83 @@ public interface IRepository<T>
 }
 ```
 
+## Automatic Schema Migrations
+
+Codezerg.Data.Repository automatically handles schema changes when you modify your entity classes. No manual migrations required!
+
+### How It Works
+
+When you create a `DatabaseRepository` or `CachedRepository`, the library:
+
+1. **Creates missing tables** - If the table doesn't exist, it's created automatically
+2. **Adds new columns** - When you add properties to your entity, columns are added to existing tables
+3. **Alters column definitions** - Changes to column types or nullability are detected and applied
+4. **Preserves existing data** - All migrations maintain your existing data
+
+### Example: Adding a New Property
+
+```csharp
+// Original entity
+public class Product
+{
+    [PrimaryKey, Identity]
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+}
+
+// Create repository - table is created automatically
+var repo = new DatabaseRepository<Product>(
+    LinqToDB.ProviderName.SQLite,
+    "Data Source=products.db"
+);
+
+// Later, you add a new property
+public class Product
+{
+    [PrimaryKey, Identity]
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+    public DateTime CreatedAt { get; set; }  // NEW PROPERTY
+}
+
+// Next time you create the repository, the column is added automatically!
+var repo2 = new DatabaseRepository<Product>(
+    LinqToDB.ProviderName.SQLite,
+    "Data Source=products.db"
+);
+// The 'CreatedAt' column now exists in the database
+```
+
+### Migration Features
+
+- **Thread-Safe**: Migrations are protected with locks to prevent concurrent schema changes
+- **One-Time Execution**: Each schema change is applied only once per application lifecycle
+- **SQLite-Optimized**: Special handling for SQLite's limited ALTER COLUMN support using table recreation
+- **Type Changes Supported**: Can alter column types (e.g., int → long) and nullability (nullable → non-nullable)
+- **Zero Configuration**: No migration files, no version tracking, completely automatic
+
+### What Gets Migrated
+
+✅ **Automatically handled:**
+- Table creation
+- Adding new columns
+- Changing column data types
+- Changing column nullability
+
+❌ **Not supported:**
+- Column renames (treated as drop + add)
+- Column deletions (old columns remain)
+- Index management
+- Complex constraints
+
+### Migration Performance
+
+- **First Repository Creation**: Performs schema inspection and applies any needed migrations
+- **Subsequent Creations**: Fast - schema is only checked once per application lifecycle
+- **No Impact on Operations**: After initialization, migrations don't affect query performance
+
 ## Advanced Features
 
 ### Complex Queries
@@ -328,12 +412,13 @@ public void Repository_Should_Handle_Concurrent_Operations()
 ## Important Notes
 
 ### This Library is NOT for:
-- ❌ Database migrations or schema management
-- ❌ Complex ORM features (use EF Core for that)
+- ❌ Complex migration scenarios (column renames, complex constraints)
+- ❌ Advanced ORM features like lazy loading, change tracking (use EF Core for that)
 - ❌ Database administration tasks
 
 ### This Library IS for:
 - ✅ Simple, fast repository pattern implementation
+- ✅ Automatic schema migrations for additive changes
 - ✅ Testing with in-memory repositories
 - ✅ Caching strategies with database backing
 - ✅ Thread-safe data access
@@ -362,6 +447,9 @@ Key Components:
 - **CachedRepository**: Hybrid approach with cache + persistence
 - **EntityOperations**: Core entity manipulation logic
 - **EntityMapping**: Database schema handling
+- **SchemaManager**: Automatic schema migration orchestration
+- **SchemaInspector**: Database schema introspection
+- **SchemaMigrator**: Schema change application
 - **IdentityManager**: Auto-incrementing ID management
 
 ## Contributing
