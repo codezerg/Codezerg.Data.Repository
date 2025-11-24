@@ -124,11 +124,11 @@ namespace Codezerg.Data.Repository.Tests
             {
                 // Act
                 var entity = new SimpleEntity { Name = "DatabaseTest", CreatedAt = DateTime.Now };
-                var id = repository.Insert(entity);
+                repository.Insert(entity);
 
                 // Assert
-                Assert.True(id > 0);
-                var retrieved = repository.FirstOrDefault(e => e.Id == id);
+                Assert.True(entity.Id > 0);
+                var retrieved = repository.FirstOrDefault(e => e.Id == entity.Id);
                 Assert.NotNull(retrieved);
                 Assert.Equal("DatabaseTest", retrieved.Name);
             }
@@ -163,7 +163,7 @@ namespace Codezerg.Data.Repository.Tests
                 var result = repository.InsertRange(entities);
 
                 // Assert
-                Assert.Equal(3, result);
+                Assert.Equal(3, result.Count());
                 Assert.Equal(3, repository.Count());
             }
             finally
