@@ -19,7 +19,7 @@ public class CachedExample
         
         // Connection string for SQLite
         var connectionString = $"Data Source={Path.Combine(dataDir, "CachedExample.db")}";
-        var repository = new CachedRepository<Order>("Microsoft.Data.Sqlite", connectionString);
+        var repository = new Repository<Order>(RepositoryOptions.Database("Microsoft.Data.Sqlite", connectionString));
         
         // Clear existing data for demo
         var existing = repository.GetAll().ToList();
@@ -43,7 +43,7 @@ public class CachedExample
                 new() { ProductId = 2, Quantity = 2, UnitPrice = 149.99m }
             }
         };
-        repository.InsertWithIdentity(order1);
+        repository.Insert(order1);
         Console.WriteLine($"Added: {order1}");
         
         var order2 = new Order
@@ -58,7 +58,7 @@ public class CachedExample
                 new() { ProductId = 2, Quantity = 3, UnitPrice = 79.99m }
             }
         };
-        repository.InsertWithIdentity(order2);
+        repository.Insert(order2);
         Console.WriteLine($"Added: {order2}");
         
         // Demonstrate cache performance
@@ -132,7 +132,7 @@ public class CachedExample
                     ShippingAddress = $"Address for Task {taskId}"
                 };
                 
-                repository.InsertWithIdentity(order);
+                repository.Insert(order);
                 Console.WriteLine($"  Task {taskId}: Added order {order.Id}");
             }));
         }
@@ -146,7 +146,7 @@ public class CachedExample
         
         // Persistence verification
         Console.WriteLine("\nReloading repository to verify persistence...");
-        var newRepository = new CachedRepository<Order>("Microsoft.Data.Sqlite", connectionString);
+        var newRepository = new Repository<Order>(RepositoryOptions.Database("Microsoft.Data.Sqlite", connectionString));
         var persistedCount = newRepository.Count();
         Console.WriteLine($"Orders persisted to database: {persistedCount}");
     }

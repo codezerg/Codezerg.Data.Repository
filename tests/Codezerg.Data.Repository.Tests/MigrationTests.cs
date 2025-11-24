@@ -72,11 +72,11 @@ namespace Codezerg.Data.Repository.Tests
         public void Migration_ShouldCreateTableIfNotExists()
         {
             // Act
-            var repository = new DatabaseRepository<MigrationTestEntity>(ProviderName.SQLiteMS, _connectionString);
+            var repository = new Repository<MigrationTestEntity>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
 
             // Assert - insert should work if table was created
             var entity = new MigrationTestEntity { Name = "Test" };
-            var id = repository.InsertWithIdentity(entity);
+            var id = repository.Insert(entity);
 
             id.Should().BeGreaterThan(0);
             entity.Id.Should().Be(id);
@@ -86,14 +86,14 @@ namespace Codezerg.Data.Repository.Tests
         public void Migration_ShouldAddNewColumn_WhenEntityPropertyAdded()
         {
             // Arrange - Create table with initial schema
-            var repository1 = new DatabaseRepository<MigrationTestEntity>(ProviderName.SQLiteMS, _connectionString);
+            var repository1 = new Repository<MigrationTestEntity>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
             repository1.Insert(new MigrationTestEntity { Name = "Original" });
 
             // Reset the schema manager to allow re-running migration
             SchemaManager<MigrationTestEntityV2>.ResetForTesting();
 
             // Act - Create repository with new schema (added Email column)
-            var repository2 = new DatabaseRepository<MigrationTestEntityV2>(ProviderName.SQLiteMS, _connectionString);
+            var repository2 = new Repository<MigrationTestEntityV2>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
 
             // Assert - Should be able to insert with new column
             var entity = new MigrationTestEntityV2
@@ -116,14 +116,14 @@ namespace Codezerg.Data.Repository.Tests
         public void Migration_ShouldAddMultipleNewColumns_WhenMultiplePropertiesAdded()
         {
             // Arrange - Create table with initial schema
-            var repository1 = new DatabaseRepository<MigrationTestEntity>(ProviderName.SQLiteMS, _connectionString);
+            var repository1 = new Repository<MigrationTestEntity>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
             repository1.Insert(new MigrationTestEntity { Name = "Original" });
 
             // Reset the schema manager
             SchemaManager<MigrationTestEntityV3>.ResetForTesting();
 
             // Act - Create repository with extended schema (added Email and CreatedAt)
-            var repository2 = new DatabaseRepository<MigrationTestEntityV3>(ProviderName.SQLiteMS, _connectionString);
+            var repository2 = new Repository<MigrationTestEntityV3>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
 
             // Assert - Should be able to insert with all new columns
             var now = DateTime.UtcNow;
@@ -149,7 +149,7 @@ namespace Codezerg.Data.Repository.Tests
         public void Migration_ShouldPreserveExistingData_WhenAddingColumns()
         {
             // Arrange - Create initial table and insert data
-            var repository1 = new DatabaseRepository<MigrationTestEntity>(ProviderName.SQLiteMS, _connectionString);
+            var repository1 = new Repository<MigrationTestEntity>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
             repository1.InsertWithIdentity(new MigrationTestEntity { Name = "First" });
             repository1.InsertWithIdentity(new MigrationTestEntity { Name = "Second" });
 
@@ -160,7 +160,7 @@ namespace Codezerg.Data.Repository.Tests
             SchemaManager<MigrationTestEntityV2>.ResetForTesting();
 
             // Act - Upgrade schema
-            var repository2 = new DatabaseRepository<MigrationTestEntityV2>(ProviderName.SQLiteMS, _connectionString);
+            var repository2 = new Repository<MigrationTestEntityV2>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
 
             // Assert - Original data should still exist
             var allData = repository2.GetAll();
@@ -189,7 +189,7 @@ namespace Codezerg.Data.Repository.Tests
         public void Migration_ShouldHandleNullableColumns()
         {
             // Act
-            var repository = new DatabaseRepository<NullableTestEntity>(ProviderName.SQLiteMS, _connectionString);
+            var repository = new Repository<NullableTestEntity>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
 
             var entity = new NullableTestEntity
             {
@@ -198,7 +198,7 @@ namespace Codezerg.Data.Repository.Tests
                 BirthDate = null
             };
 
-            var id = repository.InsertWithIdentity(entity);
+            var id = repository.Insert(entity);
 
             // Assert
             id.Should().BeGreaterThan(0);
@@ -213,10 +213,10 @@ namespace Codezerg.Data.Repository.Tests
         public void Migration_ShouldWorkWithCachedRepository()
         {
             // Act
-            var repository = new CachedRepository<MigrationTestEntity>(ProviderName.SQLiteMS, _connectionString);
+            var repository = new Repository<MigrationTestEntity>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
 
             var entity = new MigrationTestEntity { Name = "Cached Test" };
-            var id = repository.InsertWithIdentity(entity);
+            var id = repository.Insert(entity);
 
             // Assert
             id.Should().BeGreaterThan(0);
@@ -253,14 +253,14 @@ namespace Codezerg.Data.Repository.Tests
         public void Migration_ShouldHandleColumnTypeChange()
         {
             // Arrange - Create initial table
-            var repository1 = new DatabaseRepository<TypeChangeEntity>(ProviderName.SQLiteMS, _connectionString);
+            var repository1 = new Repository<TypeChangeEntity>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
             repository1.InsertWithIdentity(new TypeChangeEntity { Name = "Test", Value = 42 });
 
             // Reset schema manager
             SchemaManager<TypeChangeEntityV2>.ResetForTesting();
 
             // Act - Change column type (this will trigger ALTER COLUMN with table recreation)
-            var repository2 = new DatabaseRepository<TypeChangeEntityV2>(ProviderName.SQLiteMS, _connectionString);
+            var repository2 = new Repository<TypeChangeEntityV2>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
 
             // Assert - Should be able to use the changed column type
             var entity = new TypeChangeEntityV2
@@ -300,14 +300,14 @@ namespace Codezerg.Data.Repository.Tests
         public void Migration_ShouldHandleNullabilityChange()
         {
             // Arrange - Create initial table
-            var repository1 = new DatabaseRepository<NullabilityTestEntity>(ProviderName.SQLiteMS, _connectionString);
+            var repository1 = new Repository<NullabilityTestEntity>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
             repository1.InsertWithIdentity(new NullabilityTestEntity { Name = "Test" });
 
             // Reset schema manager
             SchemaManager<NullabilityTestEntityV2>.ResetForTesting();
 
             // Act - Change nullability (this will trigger ALTER COLUMN with table recreation)
-            var repository2 = new DatabaseRepository<NullabilityTestEntityV2>(ProviderName.SQLiteMS, _connectionString);
+            var repository2 = new Repository<NullabilityTestEntityV2>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
 
             // Assert - Should work with new nullability constraint
             var entity = new NullabilityTestEntityV2 { Name = "Not Null" };

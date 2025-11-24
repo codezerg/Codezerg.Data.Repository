@@ -47,7 +47,7 @@ namespace Codezerg.Data.Repository.Tests
         public void DatabaseRepository_ShouldHandleBooleanField()
         {
             // Arrange
-            var repository = new DatabaseRepository<TestCustomer>(ProviderName.SQLiteMS, _connectionString);
+            var repository = new Repository<TestCustomer>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
             
             var customer1 = new TestCustomer
             {
@@ -89,7 +89,7 @@ namespace Codezerg.Data.Repository.Tests
         public void DatabaseRepository_ShouldHandleAllPropertyTypes()
         {
             // Arrange
-            var repository = new DatabaseRepository<TestCustomer>(ProviderName.SQLiteMS, _connectionString);
+            var repository = new Repository<TestCustomer>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
             var testDate = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc);
             
             var customer = new TestCustomer
@@ -131,7 +131,7 @@ namespace Codezerg.Data.Repository.Tests
         public void DatabaseRepository_ShouldUpdateBooleanField()
         {
             // Arrange
-            var repository = new DatabaseRepository<TestCustomer>(ProviderName.SQLiteMS, _connectionString);
+            var repository = new Repository<TestCustomer>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
             
             var customer = new TestCustomer
             {
@@ -144,7 +144,7 @@ namespace Codezerg.Data.Repository.Tests
             };
             
             // Act
-            var id = repository.InsertWithIdentity(customer);
+            var id = repository.Insert(customer);
             Assert.True(id > 0);
             
             // Change IsActive to true
@@ -163,7 +163,7 @@ namespace Codezerg.Data.Repository.Tests
         public void DatabaseRepository_ShouldHandleComplexQueries()
         {
             // Arrange
-            var repository = new DatabaseRepository<TestCustomer>(ProviderName.SQLiteMS, _connectionString);
+            var repository = new Repository<TestCustomer>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
             
             // Insert test data
             repository.Insert(new TestCustomer 
@@ -219,7 +219,7 @@ namespace Codezerg.Data.Repository.Tests
         public void DatabaseRepository_ShouldDeleteByBooleanPredicate()
         {
             // Arrange
-            var repository = new DatabaseRepository<TestCustomer>(ProviderName.SQLiteMS, _connectionString);
+            var repository = new Repository<TestCustomer>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
             
             // Insert test data
             repository.Insert(new TestCustomer { FirstName = "Keep", IsActive = true, Email = "keep@test.com", LastName = "User", Phone = "1", RegisteredAt = DateTime.UtcNow });

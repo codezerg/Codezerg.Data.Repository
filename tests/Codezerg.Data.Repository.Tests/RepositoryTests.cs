@@ -14,14 +14,14 @@ namespace Codezerg.Data.Repository.Tests
         public void InMemoryRepository_Insert_Should_Add_Entity()
         {
             // Arrange
-            var repository = new InMemoryRepository<SimpleEntity>();
+            var repository = new Repository<SimpleEntity>(RepositoryOptions.InMemory());
             var entity = new SimpleEntity { Name = "Test", CreatedAt = DateTime.Now };
 
             // Act
             var result = repository.Insert(entity);
 
             // Assert
-            Assert.Equal(1, result);
+            Assert.NotNull(result);
             Assert.Equal(1, repository.Count());
         }
 
@@ -29,7 +29,7 @@ namespace Codezerg.Data.Repository.Tests
         public void InMemoryRepository_GetAll_Should_Return_All_Entities()
         {
             // Arrange
-            var repository = new InMemoryRepository<SimpleEntity>();
+            var repository = new Repository<SimpleEntity>(RepositoryOptions.InMemory());
             repository.Insert(new SimpleEntity { Name = "Test1", CreatedAt = DateTime.Now });
             repository.Insert(new SimpleEntity { Name = "Test2", CreatedAt = DateTime.Now });
 
@@ -44,10 +44,10 @@ namespace Codezerg.Data.Repository.Tests
         public void InMemoryRepository_Update_Should_Modify_Entity()
         {
             // Arrange
-            var repository = new InMemoryRepository<SimpleEntity>();
+            var repository = new Repository<SimpleEntity>(RepositoryOptions.InMemory());
             var entity = new SimpleEntity { Name = "Original", CreatedAt = DateTime.Now };
-            repository.InsertWithIdentity(entity);
-            
+            repository.Insert(entity);
+
             // Act
             entity.Name = "Updated";
             var result = repository.Update(entity);
@@ -62,9 +62,9 @@ namespace Codezerg.Data.Repository.Tests
         public void InMemoryRepository_Delete_Should_Remove_Entity()
         {
             // Arrange
-            var repository = new InMemoryRepository<SimpleEntity>();
+            var repository = new Repository<SimpleEntity>(RepositoryOptions.InMemory());
             var entity = new SimpleEntity { Name = "ToDelete", CreatedAt = DateTime.Now };
-            repository.InsertWithIdentity(entity);
+            repository.Insert(entity);
 
             // Act
             var result = repository.Delete(entity);
@@ -78,7 +78,7 @@ namespace Codezerg.Data.Repository.Tests
         public void InMemoryRepository_Find_Should_Filter_Entities()
         {
             // Arrange
-            var repository = new InMemoryRepository<SimpleEntity>();
+            var repository = new Repository<SimpleEntity>(RepositoryOptions.InMemory());
             repository.Insert(new SimpleEntity { Name = "Test1", CreatedAt = DateTime.Now });
             repository.Insert(new SimpleEntity { Name = "Test2", CreatedAt = DateTime.Now });
             repository.Insert(new SimpleEntity { Name = "Other", CreatedAt = DateTime.Now });
@@ -96,17 +96,17 @@ namespace Codezerg.Data.Repository.Tests
             // Arrange
             var dbPath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.db");
             var connectionString = $"Data Source={dbPath}";
-            var repository = new DatabaseRepository<SimpleEntity>("Microsoft.Data.Sqlite", connectionString);
+            var repository = new Repository<SimpleEntity>(RepositoryOptions.Database("Microsoft.Data.Sqlite", connectionString));
 
             try
             {
                 // Act
                 var entity = new SimpleEntity { Name = "DatabaseTest", CreatedAt = DateTime.Now };
-                var id = repository.InsertWithIdentity(entity);
-                
+                repository.Insert(entity);
+
                 // Assert
-                Assert.True(id > 0);
-                var retrieved = repository.FirstOrDefault(e => e.Id == id);
+                Assert.True(entity.Id > 0);
+                var retrieved = repository.FirstOrDefault(e => e.Id == entity.Id);
                 Assert.NotNull(retrieved);
                 Assert.Equal("DatabaseTest", retrieved.Name);
             }
@@ -125,23 +125,23 @@ namespace Codezerg.Data.Repository.Tests
             // Arrange
             var dbPath = Path.Combine(Path.GetTempPath(), $"cached_{Guid.NewGuid()}.db");
             var connectionString = $"Data Source={dbPath}";
-            var repository = new CachedRepository<SimpleEntity>("Microsoft.Data.Sqlite", connectionString);
+            var repository = new Repository<SimpleEntity>(RepositoryOptions.Cached("Microsoft.Data.Sqlite", connectionString));
 
             try
             {
                 // Act - Insert data
                 var entity1 = new SimpleEntity { Name = "Cached1", CreatedAt = DateTime.Now };
                 var entity2 = new SimpleEntity { Name = "Cached2", CreatedAt = DateTime.Now };
-                repository.InsertWithIdentity(entity1);
-                repository.InsertWithIdentity(entity2);
+                repository.Insert(entity1);
+                repository.Insert(entity2);
 
                 // Assert - Data should be in cache
                 var allEntities = repository.GetAll().ToList();
                 Assert.Equal(2, allEntities.Count);
 
                 // Create new repository instance (simulating restart)
-                var repository2 = new CachedRepository<SimpleEntity>("Microsoft.Data.Sqlite", connectionString);
-                
+                var repository2 = new Repository<SimpleEntity>(RepositoryOptions.Cached("Microsoft.Data.Sqlite", connectionString));
+
                 // Assert - Data should be persisted
                 var persistedEntities = repository2.GetAll().ToList();
                 Assert.Equal(2, persistedEntities.Count);
@@ -159,7 +159,7 @@ namespace Codezerg.Data.Repository.Tests
         public void Repository_DeleteMany_Should_Remove_Multiple_Entities()
         {
             // Arrange
-            var repository = new InMemoryRepository<SimpleEntity>();
+            var repository = new Repository<SimpleEntity>(RepositoryOptions.InMemory());
             var now = DateTime.Now;
             repository.Insert(new SimpleEntity { Name = "Old1", CreatedAt = now.AddDays(-10) });
             repository.Insert(new SimpleEntity { Name = "Old2", CreatedAt = now.AddDays(-5) });
@@ -177,7 +177,7 @@ namespace Codezerg.Data.Repository.Tests
         public void Repository_InsertRange_Should_Add_Multiple_Entities()
         {
             // Arrange
-            var repository = new InMemoryRepository<SimpleEntity>();
+            var repository = new Repository<SimpleEntity>(RepositoryOptions.InMemory());
             var entities = new List<SimpleEntity>
             {
                 new SimpleEntity { Name = "Batch1", CreatedAt = DateTime.Now },
@@ -189,7 +189,7 @@ namespace Codezerg.Data.Repository.Tests
             var result = repository.InsertRange(entities);
 
             // Assert
-            Assert.Equal(3, result);
+            Assert.Equal(3, result.Count());
             Assert.Equal(3, repository.Count());
         }
     }

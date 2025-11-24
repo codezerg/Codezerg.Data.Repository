@@ -18,7 +18,7 @@ public class DatabaseExample
         
         // Connection string for SQLite
         var connectionString = $"Data Source={Path.Combine(dataDir, "ExampleDatabase.db")}";
-        var repository = new DatabaseRepository<Customer>("Microsoft.Data.Sqlite", connectionString);
+        var repository = new Repository<Customer>(RepositoryOptions.Database("Microsoft.Data.Sqlite", connectionString));
         
         // Clear existing data for demo
         var existing = repository.GetAll().ToList();
@@ -38,7 +38,7 @@ public class DatabaseExample
             RegisteredAt = DateTime.UtcNow,
             IsActive = true
         };
-        repository.InsertWithIdentity(customer1);
+        repository.Insert(customer1);
         Console.WriteLine($"Added: {customer1}");
         
         var customer2 = new Customer
@@ -50,7 +50,7 @@ public class DatabaseExample
             RegisteredAt = DateTime.UtcNow.AddDays(-30),
             IsActive = true
         };
-        repository.InsertWithIdentity(customer2);
+        repository.Insert(customer2);
         Console.WriteLine($"Added: {customer2}");
         
         var customer3 = new Customer
@@ -62,7 +62,7 @@ public class DatabaseExample
             RegisteredAt = DateTime.UtcNow.AddDays(-60),
             IsActive = false
         };
-        repository.InsertWithIdentity(customer3);
+        repository.Insert(customer3);
         Console.WriteLine($"Added: {customer3}");
         
         // Query customers
@@ -107,7 +107,7 @@ public class DatabaseExample
         
         foreach (var customer in newCustomers)
         {
-            repository.InsertWithIdentity(customer);
+            repository.Insert(customer);
         }
         Console.WriteLine($"Added {newCustomers.Length} customers in batch");
         

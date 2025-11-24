@@ -172,7 +172,7 @@ public class Repository<T> : IRepository<T>, IDisposable where T : class, new()
     }
 
     // Create Operations
-    public int Insert(T entity)
+    public T Insert(T entity)
     {
         switch (_options.Mode)
         {
@@ -190,7 +190,7 @@ public class Repository<T> : IRepository<T>, IDisposable where T : class, new()
         }
     }
 
-    private int InsertInMemory(T entity)
+    private T InsertInMemory(T entity)
     {
         _lock.EnterWriteLock();
         try
@@ -198,7 +198,7 @@ public class Repository<T> : IRepository<T>, IDisposable where T : class, new()
             var entityCopy = _entity.PrepareForInsert(entity);
             _entities.Add(entityCopy);
             _entity.CopyIdentityValue(entityCopy, entity);
-            return 1;
+            return entity;
         }
         finally
         {
@@ -206,15 +206,32 @@ public class Repository<T> : IRepository<T>, IDisposable where T : class, new()
         }
     }
 
-    private int InsertDatabase(T entity)
+    private T InsertDatabase(T entity)
     {
         using (var db = CreateConnection())
         {
-            return db.Insert(entity);
+            // Check if entity has identity property
+            if (_entity.IdentityManager.IdentityProperty != null)
+            {
+                // Get the identity value
+                var id = db.InsertWithIdentity(entity);
+
+                // Set it on the entity (handles both int and long)
+                var propertyType = _entity.IdentityManager.IdentityProperty.PropertyType;
+                _entity.IdentityManager.IdentityProperty.SetValue(entity,
+                    Convert.ChangeType(id, propertyType));
+            }
+            else
+            {
+                // No identity, just insert
+                db.Insert(entity);
+            }
+
+            return entity;
         }
     }
 
-    private int InsertCached(T entity)
+    private T InsertCached(T entity)
     {
         EnsureInitialized();
         _lock.EnterWriteLock();
@@ -223,95 +240,35 @@ public class Repository<T> : IRepository<T>, IDisposable where T : class, new()
             // Insert to database first
             using (var db = CreateConnection())
             {
-                var dbResult = db.Insert(entity);
-
-                if (dbResult > 0)
+                // Check if entity has identity property
+                if (_entity.IdentityManager.IdentityProperty != null)
                 {
+                    // Get the identity value
+                    var id = db.InsertWithIdentity(entity);
+
+                    // Set it on the entity (handles both int and long)
+                    var propertyType = _entity.IdentityManager.IdentityProperty.PropertyType;
+                    _entity.IdentityManager.IdentityProperty.SetValue(entity,
+                        Convert.ChangeType(id, propertyType));
+
                     // If successful, insert to memory
                     var entityCopy = _entity.CreateDeepCopy(entity);
                     _entities.Add(entityCopy);
                 }
-
-                return dbResult;
-            }
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
-    }
-
-    public int InsertWithIdentity(T entity)
-    {
-        switch (_options.Mode)
-        {
-            case StorageMode.InMemory:
-                return InsertWithIdentityInMemory(entity);
-
-            case StorageMode.Database:
-                return InsertWithIdentityDatabase(entity);
-
-            case StorageMode.Cached:
-                return InsertWithIdentityCached(entity);
-
-            default:
-                throw new InvalidOperationException($"Unknown storage mode: {_options.Mode}");
-        }
-    }
-
-    private int InsertWithIdentityInMemory(T entity)
-    {
-        _lock.EnterWriteLock();
-        try
-        {
-            var (entityCopy, id) = _entity.PrepareForInsertWithIdentity(entity);
-            _entities.Add(entityCopy);
-            _entity.CopyIdentityValue(entityCopy, entity);
-            return (int)id;
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
-    }
-
-    private int InsertWithIdentityDatabase(T entity)
-    {
-        using (var db = CreateConnection())
-        {
-            var id = Convert.ToInt32(db.InsertWithIdentity(entity));
-
-            if (_entity.IdentityManager.IdentityProperty != null)
-            {
-                _entity.IdentityManager.IdentityProperty.SetValue(entity, id);
-            }
-
-            return id;
-        }
-    }
-
-    private int InsertWithIdentityCached(T entity)
-    {
-        EnsureInitialized();
-        _lock.EnterWriteLock();
-        try
-        {
-            using (var db = CreateConnection())
-            {
-                var id = Convert.ToInt32(db.InsertWithIdentity(entity));
-
-                if (_entity.IdentityManager.IdentityProperty != null)
+                else
                 {
-                    _entity.IdentityManager.IdentityProperty.SetValue(entity, id);
+                    // No identity
+                    var dbResult = db.Insert(entity);
+
+                    if (dbResult > 0)
+                    {
+                        // If successful, insert to memory
+                        var entityCopy = _entity.CreateDeepCopy(entity);
+                        _entities.Add(entityCopy);
+                    }
                 }
 
-                if (id > 0)
-                {
-                    var entityCopy = _entity.CreateDeepCopy(entity);
-                    _entities.Add(entityCopy);
-                }
-
-                return id;
+                return entity;
             }
         }
         finally
@@ -320,86 +277,7 @@ public class Repository<T> : IRepository<T>, IDisposable where T : class, new()
         }
     }
 
-    public long InsertWithInt64Identity(T entity)
-    {
-        switch (_options.Mode)
-        {
-            case StorageMode.InMemory:
-                return InsertWithInt64IdentityInMemory(entity);
-
-            case StorageMode.Database:
-                return InsertWithInt64IdentityDatabase(entity);
-
-            case StorageMode.Cached:
-                return InsertWithInt64IdentityCached(entity);
-
-            default:
-                throw new InvalidOperationException($"Unknown storage mode: {_options.Mode}");
-        }
-    }
-
-    private long InsertWithInt64IdentityInMemory(T entity)
-    {
-        _lock.EnterWriteLock();
-        try
-        {
-            var (entityCopy, id) = _entity.PrepareForInsertWithIdentity(entity);
-            _entities.Add(entityCopy);
-            _entity.CopyIdentityValue(entityCopy, entity);
-            return id;
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
-    }
-
-    private long InsertWithInt64IdentityDatabase(T entity)
-    {
-        using (var db = CreateConnection())
-        {
-            var id = Convert.ToInt64(db.InsertWithIdentity(entity));
-
-            if (_entity.IdentityManager.IdentityProperty != null)
-            {
-                _entity.IdentityManager.IdentityProperty.SetValue(entity, id);
-            }
-
-            return id;
-        }
-    }
-
-    private long InsertWithInt64IdentityCached(T entity)
-    {
-        EnsureInitialized();
-        _lock.EnterWriteLock();
-        try
-        {
-            using (var db = CreateConnection())
-            {
-                var id = Convert.ToInt64(db.InsertWithIdentity(entity));
-
-                if (_entity.IdentityManager.IdentityProperty != null)
-                {
-                    _entity.IdentityManager.IdentityProperty.SetValue(entity, id);
-                }
-
-                if (id > 0)
-                {
-                    var entityCopy = _entity.CreateDeepCopy(entity);
-                    _entities.Add(entityCopy);
-                }
-
-                return id;
-            }
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
-    }
-
-    public int InsertRange(IEnumerable<T> entities)
+    public IEnumerable<T> InsertRange(IEnumerable<T> entities)
     {
         switch (_options.Mode)
         {
@@ -417,20 +295,19 @@ public class Repository<T> : IRepository<T>, IDisposable where T : class, new()
         }
     }
 
-    private int InsertRangeInMemory(IEnumerable<T> entities)
+    private IEnumerable<T> InsertRangeInMemory(IEnumerable<T> entities)
     {
         _lock.EnterWriteLock();
         try
         {
-            var count = 0;
-            foreach (var entity in entities)
+            var entitiesList = entities.ToList();
+            foreach (var entity in entitiesList)
             {
                 var entityCopy = _entity.PrepareForInsert(entity);
                 _entities.Add(entityCopy);
                 _entity.CopyIdentityValue(entityCopy, entity);
-                count++;
             }
-            return count;
+            return entitiesList;
         }
         finally
         {
@@ -438,20 +315,35 @@ public class Repository<T> : IRepository<T>, IDisposable where T : class, new()
         }
     }
 
-    private int InsertRangeDatabase(IEnumerable<T> entities)
+    private IEnumerable<T> InsertRangeDatabase(IEnumerable<T> entities)
     {
         using (var db = CreateConnection())
         {
-            var count = 0;
-            foreach (var entity in entities)
+            var entitiesList = entities.ToList();
+            foreach (var entity in entitiesList)
             {
-                count += db.Insert(entity);
+                // Check if entity has identity property
+                if (_entity.IdentityManager.IdentityProperty != null)
+                {
+                    // Get the identity value
+                    var id = db.InsertWithIdentity(entity);
+
+                    // Set it on the entity (handles both int and long)
+                    var propertyType = _entity.IdentityManager.IdentityProperty.PropertyType;
+                    _entity.IdentityManager.IdentityProperty.SetValue(entity,
+                        Convert.ChangeType(id, propertyType));
+                }
+                else
+                {
+                    // No identity, just insert
+                    db.Insert(entity);
+                }
             }
-            return count;
+            return entitiesList;
         }
     }
 
-    private int InsertRangeCached(IEnumerable<T> entities)
+    private IEnumerable<T> InsertRangeCached(IEnumerable<T> entities)
     {
         EnsureInitialized();
         _lock.EnterWriteLock();
@@ -461,18 +353,37 @@ public class Repository<T> : IRepository<T>, IDisposable where T : class, new()
 
             using (var db = CreateConnection())
             {
-                var count = 0;
                 foreach (var entity in entitiesList)
                 {
-                    var dbResult = db.Insert(entity);
-                    if (dbResult > 0)
+                    // Check if entity has identity property
+                    if (_entity.IdentityManager.IdentityProperty != null)
                     {
+                        // Get the identity value
+                        var id = db.InsertWithIdentity(entity);
+
+                        // Set it on the entity (handles both int and long)
+                        var propertyType = _entity.IdentityManager.IdentityProperty.PropertyType;
+                        _entity.IdentityManager.IdentityProperty.SetValue(entity,
+                            Convert.ChangeType(id, propertyType));
+
+                        // If successful, insert to memory
                         var entityCopy = _entity.CreateDeepCopy(entity);
                         _entities.Add(entityCopy);
-                        count++;
+                    }
+                    else
+                    {
+                        // No identity
+                        var dbResult = db.Insert(entity);
+
+                        if (dbResult > 0)
+                        {
+                            // If successful, insert to memory
+                            var entityCopy = _entity.CreateDeepCopy(entity);
+                            _entities.Add(entityCopy);
+                        }
                     }
                 }
-                return count;
+                return entitiesList;
             }
         }
         finally

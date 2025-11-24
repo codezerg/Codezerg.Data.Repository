@@ -12,7 +12,7 @@ public class InMemoryExample
     {
         Console.WriteLine("\n=== InMemory Repository Example ===\n");
         
-        var repository = new InMemoryRepository<Product>();
+        var repository = new Repository<Product>();
         
         // Add products
         Console.WriteLine("Adding products...");
@@ -24,7 +24,7 @@ public class InMemoryExample
             StockQuantity = 10,
             CreatedAt = DateTime.UtcNow
         };
-        repository.InsertWithIdentity(product1);
+        repository.Insert(product1);
         Console.WriteLine($"Added: {product1}");
         
         var product2 = new Product
@@ -35,7 +35,7 @@ public class InMemoryExample
             StockQuantity = 50,
             CreatedAt = DateTime.UtcNow
         };
-        repository.InsertWithIdentity(product2);
+        repository.Insert(product2);
         Console.WriteLine($"Added: {product2}");
         
         var product3 = new Product
@@ -46,7 +46,7 @@ public class InMemoryExample
             StockQuantity = 25,
             CreatedAt = DateTime.UtcNow
         };
-        repository.InsertWithIdentity(product3);
+        repository.Insert(product3);
         Console.WriteLine($"Added: {product3}");
         
         // Get all products

@@ -8,10 +8,8 @@ namespace Codezerg.Data.Repository;
 public interface IRepository<T> where T : class
 {
     // Create
-    int Insert(T entity);
-    int InsertWithIdentity(T entity);
-    long InsertWithInt64Identity(T entity);
-    int InsertRange(IEnumerable<T> entities);
+    T Insert(T entity);
+    IEnumerable<T> InsertRange(IEnumerable<T> entities);
 
     // Read
     IEnumerable<T> GetAll();

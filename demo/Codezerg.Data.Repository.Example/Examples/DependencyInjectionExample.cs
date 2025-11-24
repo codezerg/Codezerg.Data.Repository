@@ -20,9 +20,9 @@ public class DependencyInjectionExample
             var connectionString = $"Data Source={dbPath}";
             
             // Use CachedRepository for better performance
-            var productRepository = new CachedRepository<Product>("Microsoft.Data.Sqlite", connectionString);
-            var orderRepository = new CachedRepository<Order>("Microsoft.Data.Sqlite", connectionString);
-            var orderItemRepository = new CachedRepository<OrderItem>("Microsoft.Data.Sqlite", connectionString);
+            var productRepository = new Repository<Product>(RepositoryOptions.Database("Microsoft.Data.Sqlite", connectionString));
+            var orderRepository = new Repository<Order>(RepositoryOptions.Database("Microsoft.Data.Sqlite", connectionString));
+            var orderItemRepository = new Repository<OrderItem>(RepositoryOptions.Database("Microsoft.Data.Sqlite", connectionString));
             
             try
             {
@@ -39,7 +39,7 @@ public class DependencyInjectionExample
                 Console.WriteLine("\n--- Repository State Verification ---");
                 
                 // Create another instance pointing to same database
-                var productRepository2 = new CachedRepository<Product>("Microsoft.Data.Sqlite", connectionString);
+                var productRepository2 = new Repository<Product>(RepositoryOptions.Database("Microsoft.Data.Sqlite", connectionString));
                 
                 var count1 = productRepository.Count();
                 var count2 = productRepository2.Count();
@@ -97,7 +97,7 @@ public class DependencyInjectionExample
             
             foreach (var product in products)
             {
-                _repository.InsertWithIdentity(product);
+                _repository.Insert(product);
                 Console.WriteLine($"  Added product: {product.Name} at ${product.Price}");
             }
             
@@ -152,7 +152,7 @@ public class DependencyInjectionExample
                 TotalAmount = 0
             };
             
-            _orderRepository.InsertWithIdentity(order);
+            _.*Repository.Insert(order);
             Console.WriteLine($"  Created order {order.Id}");
             
             // Add order items
@@ -165,7 +165,7 @@ public class DependencyInjectionExample
             decimal total = 0;
             foreach (var item in items)
             {
-                _orderItemRepository.InsertWithIdentity(item);
+                _.*Repository.Insert(item);
                 total += item.Subtotal;
                 Console.WriteLine($"  Added item: Product {item.ProductId} x{item.Quantity}");
             }

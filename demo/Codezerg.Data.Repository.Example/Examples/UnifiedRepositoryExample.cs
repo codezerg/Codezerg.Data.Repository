@@ -71,8 +71,8 @@ namespace Codezerg.Data.Repository.Example.Examples
             repository.DeleteMany(p => true);
 
             // Insert products
-            repository.InsertWithIdentity(new Product { Name = "Monitor", Price = 299.99m, StockQuantity = 15 });
-            repository.InsertWithIdentity(new Product { Name = "Webcam", Price = 89.99m, StockQuantity = 25 });
+            repository.Insert(new Product { Name = "Monitor", Price = 299.99m, StockQuantity = 15 });
+            repository.Insert(new Product { Name = "Webcam", Price = 89.99m, StockQuantity = 25 });
 
             // Query from database
             var allProducts = repository.GetAll().ToList();
@@ -98,8 +98,8 @@ namespace Codezerg.Data.Repository.Example.Examples
             repository.DeleteMany(p => true);
 
             // Insert products (writes to database and cache)
-            repository.InsertWithIdentity(new Product { Name = "Headphones", Price = 149.99m, StockQuantity = 40 });
-            repository.InsertWithIdentity(new Product { Name = "Microphone", Price = 199.99m, StockQuantity = 20 });
+            repository.Insert(new Product { Name = "Headphones", Price = 149.99m, StockQuantity = 40 });
+            repository.Insert(new Product { Name = "Microphone", Price = 199.99m, StockQuantity = 20 });
 
             // Query from cache (fast!)
             var cachedProducts = repository.GetAll().ToList();
