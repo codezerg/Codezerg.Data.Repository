@@ -12,7 +12,7 @@ public class InMemoryExample
     {
         Console.WriteLine("\n=== InMemory Repository Example ===\n");
         
-        var repository = new Repository<Product>();
+        var repository = new Repository<Product>(RepositoryOptions.InMemory());
         
         // Add products
         Console.WriteLine("Adding products...");

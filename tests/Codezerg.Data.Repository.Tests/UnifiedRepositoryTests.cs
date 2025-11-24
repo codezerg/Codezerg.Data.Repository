@@ -23,7 +23,7 @@ namespace Codezerg.Data.Repository.Tests
             var result = repository.Insert(entity);
 
             // Assert
-            Assert.Equal(1, result);
+            Assert.NotNull(result);
             Assert.Equal(1, repository.Count());
         }
 
@@ -187,7 +187,7 @@ namespace Codezerg.Data.Repository.Tests
             try
             {
                 var entity = new SimpleEntity { Name = "Original", CreatedAt = DateTime.Now };
-                var id = repository.Insert(entity);
+                repository.Insert(entity);
 
                 // Act
                 entity.Name = "Updated";
@@ -195,7 +195,7 @@ namespace Codezerg.Data.Repository.Tests
 
                 // Assert
                 Assert.Equal(1, result);
-                var updated = repository.FirstOrDefault(e => e.Id == id);
+                var updated = repository.FirstOrDefault(e => e.Id == entity.Id);
                 Assert.Equal("Updated", updated.Name);
             }
             finally
@@ -292,19 +292,19 @@ namespace Codezerg.Data.Repository.Tests
             try
             {
                 var entity = new SimpleEntity { Name = "Original", CreatedAt = DateTime.Now };
-                var id = repository.Insert(entity);
+                repository.Insert(entity);
 
                 // Act
                 entity.Name = "Updated";
                 repository.Update(entity);
 
                 // Assert - Check cache
-                var cachedEntity = repository.FirstOrDefault(e => e.Id == id);
+                var cachedEntity = repository.FirstOrDefault(e => e.Id == entity.Id);
                 Assert.Equal("Updated", cachedEntity.Name);
 
                 // Assert - Check database persistence
                 var repository2 = new Repository<SimpleEntity>(options);
-                var persistedEntity = repository2.FirstOrDefault(e => e.Id == id);
+                var persistedEntity = repository2.FirstOrDefault(e => e.Id == entity.Id);
                 Assert.Equal("Updated", persistedEntity.Name);
             }
             finally
@@ -328,7 +328,7 @@ namespace Codezerg.Data.Repository.Tests
             try
             {
                 var entity = new SimpleEntity { Name = "ToDelete", CreatedAt = DateTime.Now };
-                var id = repository.Insert(entity);
+                repository.Insert(entity);
 
                 // Act
                 repository.Delete(entity);

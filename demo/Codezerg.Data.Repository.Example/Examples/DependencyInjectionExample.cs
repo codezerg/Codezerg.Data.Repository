@@ -152,20 +152,20 @@ public class DependencyInjectionExample
                 TotalAmount = 0
             };
             
-            _.*Repository.Insert(order);
+            _orderRepository.Insert(order);
             Console.WriteLine($"  Created order {order.Id}");
-            
+
             // Add order items
             var items = new[]
             {
                 new OrderItem { OrderId = order.Id, ProductId = 1, Quantity = 2, UnitPrice = 50.00m },
                 new OrderItem { OrderId = order.Id, ProductId = 2, Quantity = 1, UnitPrice = 100.00m }
             };
-            
+
             decimal total = 0;
             foreach (var item in items)
             {
-                _.*Repository.Insert(item);
+                _orderItemRepository.Insert(item);
                 total += item.Subtotal;
                 Console.WriteLine($"  Added item: Product {item.ProductId} x{item.Quantity}");
             }

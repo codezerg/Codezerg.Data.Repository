@@ -76,10 +76,9 @@ namespace Codezerg.Data.Repository.Tests
 
             // Assert - insert should work if table was created
             var entity = new MigrationTestEntity { Name = "Test" };
-            var id = repository.Insert(entity);
+            repository.Insert(entity);
 
-            id.Should().BeGreaterThan(0);
-            entity.Id.Should().Be(id);
+            entity.Id.Should().BeGreaterThan(0);
         }
 
         [Fact]
@@ -102,11 +101,11 @@ namespace Codezerg.Data.Repository.Tests
                 Email = "test@example.com"
             };
 
-            var id = repository2.InsertWithIdentity(entity);
-            id.Should().BeGreaterThan(0);
+            repository2.Insert(entity);
+            entity.Id.Should().BeGreaterThan(0);
 
             // Verify data was saved correctly
-            var retrieved = repository2.FirstOrDefault(e => e.Id == id);
+            var retrieved = repository2.FirstOrDefault(e => e.Id == entity.Id);
             retrieved.Should().NotBeNull();
             retrieved.Name.Should().Be("Test");
             retrieved.Email.Should().Be("test@example.com");
@@ -134,11 +133,11 @@ namespace Codezerg.Data.Repository.Tests
                 CreatedAt = now
             };
 
-            var id = repository2.InsertWithIdentity(entity);
-            id.Should().BeGreaterThan(0);
+            repository2.Insert(entity);
+            entity.Id.Should().BeGreaterThan(0);
 
             // Verify all data was saved correctly
-            var retrieved = repository2.FirstOrDefault(e => e.Id == id);
+            var retrieved = repository2.FirstOrDefault(e => e.Id == entity.Id);
             retrieved.Should().NotBeNull();
             retrieved.Name.Should().Be("Test");
             retrieved.Email.Should().Be("test@example.com");
@@ -150,8 +149,8 @@ namespace Codezerg.Data.Repository.Tests
         {
             // Arrange - Create initial table and insert data
             var repository1 = new Repository<MigrationTestEntity>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
-            repository1.InsertWithIdentity(new MigrationTestEntity { Name = "First" });
-            repository1.InsertWithIdentity(new MigrationTestEntity { Name = "Second" });
+            repository1.Insert(new MigrationTestEntity { Name = "First" });
+            repository1.Insert(new MigrationTestEntity { Name = "Second" });
 
             var originalCount = repository1.Count();
             originalCount.Should().Be(2);
@@ -198,12 +197,12 @@ namespace Codezerg.Data.Repository.Tests
                 BirthDate = null
             };
 
-            var id = repository.Insert(entity);
+            repository.Insert(entity);
 
             // Assert
-            id.Should().BeGreaterThan(0);
+            entity.Id.Should().BeGreaterThan(0);
 
-            var retrieved = repository.FirstOrDefault(e => e.Id == id);
+            var retrieved = repository.FirstOrDefault(e => e.Id == entity.Id);
             retrieved.Should().NotBeNull();
             retrieved.Age.Should().BeNull();
             retrieved.BirthDate.Should().BeNull();
@@ -216,12 +215,12 @@ namespace Codezerg.Data.Repository.Tests
             var repository = new Repository<MigrationTestEntity>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
 
             var entity = new MigrationTestEntity { Name = "Cached Test" };
-            var id = repository.Insert(entity);
+            repository.Insert(entity);
 
             // Assert
-            id.Should().BeGreaterThan(0);
+            entity.Id.Should().BeGreaterThan(0);
 
-            var retrieved = repository.FirstOrDefault(e => e.Id == id);
+            var retrieved = repository.FirstOrDefault(e => e.Id == entity.Id);
             retrieved.Should().NotBeNull();
             retrieved.Name.Should().Be("Cached Test");
         }
@@ -254,7 +253,7 @@ namespace Codezerg.Data.Repository.Tests
         {
             // Arrange - Create initial table
             var repository1 = new Repository<TypeChangeEntity>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
-            repository1.InsertWithIdentity(new TypeChangeEntity { Name = "Test", Value = 42 });
+            repository1.Insert(new TypeChangeEntity { Name = "Test", Value = 42 });
 
             // Reset schema manager
             SchemaManager<TypeChangeEntityV2>.ResetForTesting();
@@ -269,10 +268,10 @@ namespace Codezerg.Data.Repository.Tests
                 Value = 9999999999L // Long value that wouldn't fit in int
             };
 
-            var id = repository2.InsertWithIdentity(entity);
-            id.Should().BeGreaterThan(0);
+            repository2.Insert(entity);
+            entity.Id.Should().BeGreaterThan(0);
 
-            var retrieved = repository2.FirstOrDefault(e => e.Id == id);
+            var retrieved = repository2.FirstOrDefault(e => e.Id == entity.Id);
             retrieved.Should().NotBeNull();
             retrieved.Value.Should().Be(9999999999L);
         }
@@ -301,7 +300,7 @@ namespace Codezerg.Data.Repository.Tests
         {
             // Arrange - Create initial table
             var repository1 = new Repository<NullabilityTestEntity>(RepositoryOptions.Database("Microsoft.Data.Sqlite", _connectionString));
-            repository1.InsertWithIdentity(new NullabilityTestEntity { Name = "Test" });
+            repository1.Insert(new NullabilityTestEntity { Name = "Test" });
 
             // Reset schema manager
             SchemaManager<NullabilityTestEntityV2>.ResetForTesting();
@@ -311,8 +310,8 @@ namespace Codezerg.Data.Repository.Tests
 
             // Assert - Should work with new nullability constraint
             var entity = new NullabilityTestEntityV2 { Name = "Not Null" };
-            var id = repository2.InsertWithIdentity(entity);
-            id.Should().BeGreaterThan(0);
+            repository2.Insert(entity);
+            entity.Id.Should().BeGreaterThan(0);
         }
     }
 }

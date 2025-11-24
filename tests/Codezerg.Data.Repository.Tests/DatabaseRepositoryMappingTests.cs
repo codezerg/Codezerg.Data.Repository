@@ -144,17 +144,17 @@ namespace Codezerg.Data.Repository.Tests
             };
             
             // Act
-            var id = repository.Insert(customer);
-            Assert.True(id > 0);
-            
+            repository.Insert(customer);
+            Assert.True(customer.Id > 0);
+
             // Change IsActive to true
             customer.IsActive = true;
             var updateCount = repository.Update(customer);
-            
+
             // Assert
             Assert.Equal(1, updateCount);
-            
-            var updated = repository.FirstOrDefault(c => c.Id == id);
+
+            var updated = repository.FirstOrDefault(c => c.Id == customer.Id);
             Assert.NotNull(updated);
             Assert.True(updated.IsActive);
         }
