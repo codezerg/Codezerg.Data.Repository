@@ -21,10 +21,28 @@ namespace Codezerg.Data.Repository.Tests
         
         public void Dispose()
         {
+            // Clear SQLite connection pools before deleting files
+            ClearSqliteConnectionPools();
+
             if (File.Exists(_testDbPath))
             {
                 try { File.Delete(_testDbPath); } catch { }
             }
+        }
+
+        private static void ClearSqliteConnectionPools()
+        {
+            try
+            {
+                var sqliteConnectionType = Type.GetType("Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite");
+                if (sqliteConnectionType != null)
+                {
+                    var clearMethod = sqliteConnectionType.GetMethod("ClearAllPools",
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                    clearMethod?.Invoke(null, null);
+                }
+            }
+            catch { }
         }
         
         // Test entity similar to Customer - has Table attribute and some properties with attributes

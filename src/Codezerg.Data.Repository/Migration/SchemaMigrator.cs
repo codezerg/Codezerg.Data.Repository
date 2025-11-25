@@ -47,10 +47,47 @@ namespace Codezerg.Data.Repository.Migration
             if (column == null)
                 throw new ArgumentNullException(nameof(column));
 
+            // SQLite requires a default value when adding NOT NULL columns to tables with existing data
             var nullable = column.IsNullable ? "NULL" : "NOT NULL";
-            var sql = $"ALTER TABLE [{tableName}] ADD COLUMN [{column.ColumnName}] {column.DataType} {nullable}";
+            var defaultValue = column.IsNullable ? "" : GetDefaultValueForType(column.DataType);
+            var sql = $"ALTER TABLE [{tableName}] ADD COLUMN [{column.ColumnName}] {column.DataType} {nullable}{defaultValue}";
 
             _connection.Execute(sql);
+        }
+
+        /// <summary>
+        /// Gets the default value clause for a column type.
+        /// </summary>
+        /// <param name="dataType">The column data type.</param>
+        /// <returns>The default value clause including DEFAULT keyword.</returns>
+        private static string GetDefaultValueForType(string dataType)
+        {
+            var upperType = (dataType ?? string.Empty).ToUpperInvariant();
+
+            if (upperType.Contains("INT") || upperType.Contains("NUMERIC") || upperType.Contains("REAL") ||
+                upperType.Contains("FLOAT") || upperType.Contains("DOUBLE") || upperType.Contains("DECIMAL"))
+            {
+                return " DEFAULT 0";
+            }
+
+            if (upperType.Contains("TEXT") || upperType.Contains("CHAR") || upperType.Contains("CLOB") ||
+                upperType.Contains("VARCHAR") || upperType.Contains("NVARCHAR"))
+            {
+                return " DEFAULT ''";
+            }
+
+            if (upperType.Contains("BLOB"))
+            {
+                return " DEFAULT X''";
+            }
+
+            if (upperType.Contains("BOOL"))
+            {
+                return " DEFAULT 0";
+            }
+
+            // For unknown types, use empty string as a safe default
+            return " DEFAULT ''";
         }
 
         /// <summary>

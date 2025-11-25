@@ -136,6 +136,7 @@ namespace Codezerg.Data.Repository.Tests
             {
                 // Cleanup
                 repository.DeleteMany(e => true);
+                repository.Dispose();
                 if (File.Exists(dbPath))
                     File.Delete(dbPath);
             }
@@ -170,6 +171,7 @@ namespace Codezerg.Data.Repository.Tests
             {
                 // Cleanup
                 repository.DeleteMany(e => true);
+                repository.Dispose();
                 if (File.Exists(dbPath))
                     File.Delete(dbPath);
             }
@@ -202,6 +204,7 @@ namespace Codezerg.Data.Repository.Tests
             {
                 // Cleanup
                 repository.DeleteMany(e => true);
+                repository.Dispose();
                 if (File.Exists(dbPath))
                     File.Delete(dbPath);
             }
@@ -234,6 +237,7 @@ namespace Codezerg.Data.Repository.Tests
             {
                 // Cleanup
                 repository.DeleteMany(e => true);
+                repository.Dispose();
                 if (File.Exists(dbPath))
                     File.Delete(dbPath);
             }
@@ -483,6 +487,7 @@ namespace Codezerg.Data.Repository.Tests
             finally
             {
                 // Cleanup
+                repository.Dispose();
                 if (File.Exists(dbPath))
                     File.Delete(dbPath);
             }

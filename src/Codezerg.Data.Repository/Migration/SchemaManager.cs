@@ -16,7 +16,7 @@ namespace Codezerg.Data.Repository.Migration
     internal static class SchemaManager<T> where T : class
     {
         private static readonly object _lock = new object();
-        private static bool _schemaEnsured = false;
+        private static readonly HashSet<string> _ensuredConnections = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Ensures the database schema matches the entity definition.
@@ -27,12 +27,14 @@ namespace Codezerg.Data.Repository.Migration
         /// <param name="mappingSchema">The mapping schema for the entity.</param>
         public static void EnsureSchema(DataConnection connection, MappingSchema mappingSchema)
         {
-            if (_schemaEnsured)
+            var connectionKey = connection.ConnectionString ?? string.Empty;
+
+            if (_ensuredConnections.Contains(connectionKey))
                 return;
 
             lock (_lock)
             {
-                if (_schemaEnsured)
+                if (_ensuredConnections.Contains(connectionKey))
                     return;
 
                 try
@@ -47,7 +49,7 @@ namespace Codezerg.Data.Repository.Migration
                     {
                         // Table doesn't exist - create it
                         migrator.CreateTable<T>();
-                        _schemaEnsured = true;
+                        _ensuredConnections.Add(connectionKey);
                         return;
                     }
 
@@ -72,7 +74,7 @@ namespace Codezerg.Data.Repository.Migration
                         }
                     }
 
-                    _schemaEnsured = true;
+                    _ensuredConnections.Add(connectionKey);
                 }
                 catch (Exception)
                 {
@@ -163,11 +165,14 @@ namespace Codezerg.Data.Repository.Migration
         }
 
         /// <summary>
-        /// Resets the schema ensured flag for testing purposes.
+        /// Resets the schema ensured state for testing purposes.
         /// </summary>
         internal static void ResetForTesting()
         {
-            _schemaEnsured = false;
+            lock (_lock)
+            {
+                _ensuredConnections.Clear();
+            }
         }
     }
 }
