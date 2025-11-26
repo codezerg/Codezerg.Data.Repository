@@ -29,21 +29,34 @@ dotnet run --project demo/Codezerg.Data.Repository.Example
 
 ## Architecture Overview
 
-This is a .NET Standard 2.0 repository pattern library providing three implementation strategies with a unified `IRepository<T>` interface:
+This is a .NET Standard 2.0 repository pattern library with a unified `Repository<T>` class that uses the Strategy pattern to support three storage modes via `RepositoryOptions`:
 
-1. **InMemoryRepository<T>**: Thread-safe in-memory storage with deep copy protection to prevent external modifications, uses ReaderWriterLockSlim for thread safety
-2. **DatabaseRepository<T>**: Direct database access using linq2db with SQLite support, includes automatic table creation, thread-safe through connection-per-operation pattern
-3. **CachedRepository<T>**: Hybrid approach combining in-memory caching with SQLite persistence, fully thread-safe using ReaderWriterLockSlim
+1. **StorageMode.InMemory**: Thread-safe in-memory storage with deep copy protection, uses ReaderWriterLockSlim for thread safety
+2. **StorageMode.Database**: Direct database access using linq2db with SQLite support, thread-safe through connection-per-operation pattern
+3. **StorageMode.Cached**: Hybrid approach combining in-memory caching with SQLite persistence, fully thread-safe using ReaderWriterLockSlim
 
 ### Key Architectural Components
 
 - **IRepository<T>**: Core interface defining CRUD operations (src/Codezerg.Data.Repository/IRepository.cs:8)
+- **Repository<T>**: Unified repository implementation using Strategy pattern (src/Codezerg.Data.Repository/Repository.cs:12)
+- **RepositoryOptions**: Configuration class with StorageMode enum and factory methods (src/Codezerg.Data.Repository/RepositoryOptions.cs:8)
+- **StorageMode**: Enum defining storage strategies - InMemory, Database, Cached (src/Codezerg.Data.Repository/RepositoryOptions.cs:102)
+
+### Entity Helper Components
+
 - **EntityOperations<T>**: Handles entity manipulation, identity management, and deep copying (src/Codezerg.Data.Repository/EntityOperations.cs:13)
 - **EntityMapping<T>**: Manages database mapping schemas and table names (src/Codezerg.Data.Repository/EntityMapping.cs:13)
 - **PrimaryKeyHelper<T>**: Manages primary key detection and operations (src/Codezerg.Data.Repository/PrimaryKeyHelper.cs)
 - **IdentityManager<T>**: Manages auto-incrementing identity values for entities (src/Codezerg.Data.Repository/IdentityManager.cs)
 - **EntityCloner<T>**: Creates deep copies of entities for data isolation (src/Codezerg.Data.Repository/EntityCloner.cs)
 - **EntityMerger<T>**: Updates entity properties while preserving primary keys (src/Codezerg.Data.Repository/EntityMerger.cs)
+
+### Internal Storage Strategy Components
+
+- **IStorageStrategy<T>**: Internal interface defining storage operations (src/Codezerg.Data.Repository/Storage/IStorageStrategy.cs)
+- **InMemoryStorage<T>**: Thread-safe in-memory implementation (src/Codezerg.Data.Repository/Storage/InMemoryStorage.cs)
+- **DatabaseStorage<T>**: Direct SQLite implementation via linq2db (src/Codezerg.Data.Repository/Storage/DatabaseStorage.cs)
+- **CachedStorage<T>**: Hybrid in-memory cache with database persistence (src/Codezerg.Data.Repository/Storage/CachedStorage.cs)
 
 ### Automatic Schema Migration Components
 
@@ -52,18 +65,35 @@ This is a .NET Standard 2.0 repository pattern library providing three implement
 - **SchemaMigrator**: Applies schema changes (CREATE TABLE, ADD COLUMN, ALTER COLUMN) (src/Codezerg.Data.Repository/Migration/SchemaMigrator.cs)
 - **TableColumn**: Model representing database column metadata (src/Codezerg.Data.Repository/Migration/TableColumn.cs)
 
-### Repository Selection Strategy
+### Repository Usage
 
-- All three repository types implement `IRepository<T>` interface
-- InMemoryRepository: Best for unit testing and temporary data storage
-- DatabaseRepository: Direct database operations with minimal overhead
-- CachedRepository: Optimal for read-heavy scenarios with persistence requirements
-- SQLite databases are stored relative to AppDomain.CurrentDomain.BaseDirectory
-- Database names are derived from entity type via `EntityMapping<T>.GetDatabaseName()`
+Create repositories using `RepositoryOptions` factory methods:
+
+```csharp
+// In-memory storage (no persistence)
+var inMemoryRepo = new Repository<Product>(RepositoryOptions.InMemory());
+
+// Direct database storage
+var dbRepo = new Repository<Product>(RepositoryOptions.Database(
+    ProviderName.SQLite,
+    "Data Source=products.db"));
+
+// Cached storage (in-memory cache with database persistence)
+var cachedRepo = new Repository<Product>(RepositoryOptions.Cached(
+    ProviderName.SQLite,
+    "Data Source=products.db"));
+```
+
+**Mode Selection Guide:**
+- **InMemory**: Best for unit testing, temporary data, and development
+- **Database**: Best for write-heavy scenarios, minimal memory usage, direct database access
+- **Cached**: Best for read-heavy scenarios, small to medium datasets, optimal query performance
+
+SQLite databases are stored relative to AppDomain.CurrentDomain.BaseDirectory. Database names can be derived from entity type via `EntityMapping<T>.GetDatabaseName()`.
 
 ### Automatic Schema Migrations
 
-The library includes automatic schema migration support for DatabaseRepository and CachedRepository:
+The library includes automatic schema migration support for Database and Cached storage modes:
 
 - **Automatic Table Creation**: Tables are created automatically if they don't exist
 - **Column Addition**: When properties are added to entities, corresponding columns are added to the database
@@ -87,9 +117,9 @@ Limitations:
 
 ### Thread Safety
 
-- **InMemoryRepository**: Fully thread-safe using ReaderWriterLockSlim with NoRecursion policy
-- **DatabaseRepository**: Thread-safe through connection-per-operation pattern
-- **CachedRepository**: Fully thread-safe using ReaderWriterLockSlim for coordinating memory and database operations
+- **InMemory mode**: Fully thread-safe using ReaderWriterLockSlim with NoRecursion policy
+- **Database mode**: Thread-safe through connection-per-operation pattern
+- **Cached mode**: Fully thread-safe using ReaderWriterLockSlim for coordinating memory and database operations
 - **Schema Migrations**: Protected with locks in SchemaManager to prevent concurrent schema changes
 
 ### Attribute Support
@@ -118,9 +148,7 @@ The test project uses:
 ## Repository Interface Methods
 
 ### Create Operations
-- `Insert(T entity)`: Insert single entity
-- `InsertWithIdentity(T entity)`: Insert and return int identity
-- `InsertWithInt64Identity(T entity)`: Insert and return long identity
+- `Insert(T entity)`: Insert single entity (returns entity with identity assigned)
 - `InsertRange(IEnumerable<T> entities)`: Insert multiple entities
 
 ### Read Operations
@@ -144,9 +172,15 @@ The test project uses:
 - `Count(Expression<Func<T, bool>> predicate)`: Count by predicate
 - `Exists(Expression<Func<T, bool>> predicate)`: Check existence
 
+### Mode-Specific Methods
+
+- `Refresh()`: Reloads cache from database (Cached mode only)
+- `Clear()`: Clears all data and resets identity (InMemory and Cached modes only)
+
 ## Examples
 
 Example implementations are available in `demo/Codezerg.Data.Repository.Example/Examples/`:
+- UnifiedRepositoryExample.cs: Demonstrates the unified Repository<T> with all storage modes
 - InMemoryExample.cs: Demonstrates in-memory repository usage
 - DatabaseExample.cs: Shows SQLite database repository
 - CachedExample.cs: Illustrates cached repository with persistence

@@ -1,66 +1,115 @@
-Codezerg.Data.Repository  
+Codezerg.Data.Repository
 
-summary: .NET Standard 2.0 (C#7.3) repository pattern library. NuGet pkg Id=Codezerg.Data.Repository v1.0.0 MIT. Depends on linq2db v5.4.1 (includes Microsoft.Data.Sqlite).  
+summary: .NET Standard 2.0 (C#7.3) repository pattern library. NuGet pkg Id=Codezerg.Data.Repository v1.0.0 MIT. Depends on linq2db v5.4.1 (includes Microsoft.Data.Sqlite).
 
-target: netstandard2.0. use cases: simple thread‑safe repositories with three strategies.  
+target: netstandard2.0. use cases: simple thread‑safe repositories with three storage modes via unified Repository<T> class.
 
-### IRepository<T> (where T:class)  
-Create:  
-- Insert(T entity) → int (rows inserted)  
-- InsertWithIdentity(T entity) → int (generated identity as int)  
-- InsertWithInt64Identity(T entity) → long (generated identity as long)  
-- InsertRange(IEnumerable<T>) → int (# inserted)  
+### Repository<T> (where T : class, new())
+Unified repository using Strategy pattern. Implements IRepository<T> and IDisposable.
 
-Read:  
-- GetAll() → IEnumerable<T>  
-- Find(Expression<Func<T,bool>>) → IEnumerable<T>  
-- FirstOrDefault(Expression<Func<T,bool>>) → T  
-- Select<TResult>(Expression<Func<T,TResult>>) → IEnumerable<TResult>  
-- Query<TResult>(Func<IQueryable<T>,IEnumerable<TResult>>) → IEnumerable<TResult>  
+Constructor: Repository(RepositoryOptions options)
 
-Update:  
-- Update(T entity) → int (# updated)  
-- UpdateRange(IEnumerable<T>) → int (# updated)  
+### RepositoryOptions
+Configuration class with factory methods:
+- RepositoryOptions.InMemory() → in-memory storage only
+- RepositoryOptions.Database(providerName, connectionString) → direct database storage
+- RepositoryOptions.Cached(providerName, connectionString) → in-memory cache with database persistence
 
-Delete:  
-- Delete(T entity) → int (# deleted)  
-- DeleteRange(IEnumerable<T>) → int (# deleted)  
-- DeleteMany(Expression<Func<T,bool>>) → int (# deleted)  
+Properties: Mode (StorageMode), ProviderName (string), ConnectionString (string)
 
-Utility:  
-- Count() → int  
-- Count(Expression<Func<T,bool>>) → int  
-- Exists(Expression<Func<T,bool>>) → bool  
+### StorageMode enum
+- InMemory: thread-safe in-memory storage, data lost on restart, best for unit testing
+- Database: direct database operations, connection-per-operation, best for write-heavy scenarios
+- Cached: in-memory cache with database persistence, best for read-heavy scenarios
 
-### Implementations  
-InMemoryRepository<T>: stores private List<T>, thread‑safe via ReaderWriterLockSlim(NoRecursion). On insert, deep‑copies input & assigns identity. Copy identity back. Read returns deep copies. Update & Delete keyed by PKs. Clear() empties + resets identity seed.  
+### IRepository<T> (where T : class)
+Create:
+- Insert(T entity) → T (returns entity with identity assigned)
+- InsertRange(IEnumerable<T>) → IEnumerable<T>
 
-DatabaseRepository<T>: wraps LinqToDB.DataConnection(provider,conn,mappingSchema). Initializes mapping schema via EntityMapping<T>. Ensures table existence in ctor. Enables WAL for SQLite. Insert returns rows, InsertWithIdentity/Int64 returns assigned ID and copies back into entity if identity property. Range ops loop Insert/Update/Delete. Read delegates db queries. DeleteMany uses Table.Where(predicate).Delete().  
+Read:
+- GetAll() → IEnumerable<T>
+- Find(Expression<Func<T,bool>>) → IEnumerable<T>
+- FirstOrDefault(Expression<Func<T,bool>>) → T
+- Select<TResult>(Expression<Func<T,TResult>>) → IEnumerable<TResult>
+- Query<TResult>(Func<IQueryable<T>,IEnumerable<TResult>>) → IEnumerable<TResult>
 
-CachedRepository<T>: composes InMemoryRepository<T> and DatabaseRepository<T>, coordinates with ReaderWriterLockSlim. Field _isInitialized, populated at first use via LoadDataFromDatabase() (clear mem, fetch all from DB, insertRange). Reads served from memory. Writes: perform db op first, if >0 then mirror into memory. DeleteMany calls db.DeleteMany then deletes from mem. Refresh() reloads from db. Dispose() disposes lock.  
+Update:
+- Update(T entity) → int (# updated)
+- UpdateRange(IEnumerable<T>) → int (# updated)
 
-### Supporting classes  
-EntityOperations<T>: Uses PrimaryKeyHelper<T> & IdentityManager<T>. Prepares entities for insert (assign identity), clones entities, copies identity values between entities, updates entity values excluding PKs, finds by PK.  
+Delete:
+- Delete(T entity) → int (# deleted)
+- DeleteRange(IEnumerable<T>) → int (# deleted)
+- DeleteMany(Expression<Func<T,bool>>) → int (# deleted)
 
-PrimaryKeyHelper<T>: caches PK props via [PrimaryKey]. Provides GetPrimaryKeyValues(entity), HaveSamePrimaryKeys, FindEntityByPrimaryKeys.  
+Utility:
+- Count() → int
+- Count(Expression<Func<T,bool>>) → int
+- Exists(Expression<Func<T,bool>>) → bool
 
-IdentityManager<T>: detects [Identity] property. Maintains long _identitySeed initialized to 1. AssignIdentity sets numeric value if unset (supports int,long,short,byte, converts otherwise). ResetIdentitySeed resets to 1. IdentityProperty accessible.  
+Mode-specific (on Repository<T>):
+- Clear() → void (InMemory/Cached only, clears data and resets identity)
+- Refresh() → void (Cached only, reloads cache from database)
 
-EntityCloner<T>: CreateDeepCopy(entity) builds new T and copies readable/writable props via reflection (shallow on reference types).  
+### Entity Attributes (linq2db)
+- [Table("name")] or [Table("name", Database="dbname")] - table/database name
+- [PrimaryKey] - marks primary key property
+- [Identity] - marks auto-incrementing identity column
+- [Column("name")] - column mapping with optional Name, DataType, CanBeNull, Length
+- [NotColumn] - excludes property from database mapping
 
-EntityMerger<T>: UpdateEntityProperties(target,source,excludeProps) copies writable props from source to target skipping excluded ones (e.g., PK).  
+### Thread Safety
+- InMemory: ReaderWriterLockSlim with NoRecursion policy
+- Database: connection-per-operation ensures isolation
+- Cached: ReaderWriterLockSlim for coordinated memory/database operations
 
-EntityMapping<T>: static. Computes tableName ([Table].Name or type.Name), database ([Table].Database or assembly name). Builds MappingSchema+FluentMappingBuilder. Processes each public instance get/set prop: if Has ColumnAttribute/NotColumnAttribute → skip adding. Otherwise: skip readonly or collections → NotColumn. Otherwise create ColumnAttribute(Name=prop.Name, CanBeNull = type nullability, DataType=int for enums).  
+### Automatic Schema Migrations
+Database and Cached modes auto-migrate schema on initialization:
+- Creates tables if not exist
+- Adds new columns for new properties
+- Alters column types/nullability
+- SQLite uses table recreation for ALTER COLUMN
 
-### Thread safety  
-- InMemoryRepository: ReaderWriterLockSlim NoRecursion  
-- DatabaseRepository: connection‑per‑operation ensures isolation  
-- CachedRepository: ReaderWriterLockSlim for sync across mem/db  
+### Usage Examples
+```csharp
+// In-memory (testing/temp data)
+using var repo = new Repository<Product>(RepositoryOptions.InMemory());
 
-### Datastore  
-Default SQLite with WAL; connection string "Data Source=filename.db". Works with all linq2db providers (SQL Server, PostgreSQL, MySQL, etc).  
+// Direct database
+using var repo = new Repository<Product>(RepositoryOptions.Database(
+    ProviderName.SQLite, "Data Source=products.db"));
 
-### Usage patterns  
-- InMemoryRepository: unit testing/temp store.  
-- DatabaseRepository: direct persistent operations.  
-- CachedRepository: read‑heavy caching with durability.  
+// Cached (read-heavy with persistence)
+using var repo = new Repository<Product>(RepositoryOptions.Cached(
+    ProviderName.SQLite, "Data Source=products.db"));
+
+// CRUD operations
+var product = repo.Insert(new Product { Name = "Widget", Price = 9.99m });
+var all = repo.GetAll();
+var expensive = repo.Find(p => p.Price > 100);
+repo.Update(product);
+repo.Delete(product);
+repo.DeleteMany(p => p.Price < 1);
+```
+
+### Entity Example
+```csharp
+[Table("Products")]
+public class Product
+{
+    [PrimaryKey, Identity]
+    public int Id { get; set; }
+
+    [Column(Length = 100)]
+    public string Name { get; set; }
+
+    [Column(CanBeNull = true)]
+    public string Description { get; set; }
+
+    public decimal Price { get; set; }
+}
+```
+
+### Datastore
+Default SQLite with WAL mode. Works with all linq2db providers (SQL Server, PostgreSQL, MySQL, etc) via ProviderName constants.
