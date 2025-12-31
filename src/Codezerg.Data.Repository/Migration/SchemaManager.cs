@@ -119,8 +119,9 @@ namespace Codezerg.Data.Repository.Migration
 
                 if (sqlBuilder != null)
                 {
-                    var sqlDataType = new SqlDataType(column.GetDbDataType(true));
-                    var result = sqlBuilder.BuildDataType(new StringBuilder(), sqlDataType).ToString();
+                    var dbDataType = column.GetDbDataType(true);
+                    var sqlDataType = new SqlDataType(dbDataType);
+                    var result = sqlBuilder.BuildDataType(new StringBuilder(), dbDataType).ToString();
                     return result;
                 }
             }
